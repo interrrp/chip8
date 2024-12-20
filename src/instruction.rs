@@ -3,7 +3,7 @@
 /// This is based on [Cowgod's CHIP-8 Technical
 /// Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM).
 #[allow(dead_code)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Instruction {
     /// Clear the display.
     Cls,
