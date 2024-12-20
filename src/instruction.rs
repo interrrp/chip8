@@ -4,7 +4,7 @@
 /// Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM).
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq)]
-pub enum Instruction {
+pub(crate) enum Instruction {
     /// Clear the display.
     Cls,
 
@@ -116,7 +116,7 @@ pub enum Instruction {
     LdVxI { vx: u16 },
 }
 
-pub(crate) fn parse_instructions(opcodes: &[u16]) -> Vec<Instruction> {
+pub(crate) fn parse_instructions_from_opcodes(opcodes: &[u16]) -> Vec<Instruction> {
     let mut instructions = Vec::new();
 
     for op in opcodes {
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn load_instructions_with_no_args() {
         assert_eq!(
-            parse_instructions(&[0x00E0, 0x00EE]),
+            parse_instructions_from_opcodes(&[0x00E0, 0x00EE]),
             vec![Instruction::Cls, Instruction::Ret],
         );
     }
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn load_instructions_with_addr_arg() {
         assert_eq!(
-            parse_instructions(&[0x1abc, 0x2def]),
+            parse_instructions_from_opcodes(&[0x1abc, 0x2def]),
             vec![Instruction::Jp { addr: 0xabc }, Instruction::Call { addr: 0xdef }],
         );
     }
@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn load_instructions_with_vx_byte_args() {
         assert_eq!(
-            parse_instructions(&[0x3abc, 0x4def]),
+            parse_instructions_from_opcodes(&[0x3abc, 0x4def]),
             vec![
                 Instruction::SeVxByte { vx: 0xa, byte: 0xbc },
                 Instruction::SneVxByte { vx: 0xd, byte: 0xef },
@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn load_instructions_with_vx_vy_args() {
         assert_eq!(
-            parse_instructions(&[0x8ab0, 0x8cd1]),
+            parse_instructions_from_opcodes(&[0x8ab0, 0x8cd1]),
             vec![
                 Instruction::LdVxVy { vx: 0xa, vy: 0xb },
                 Instruction::OrVxVy { vx: 0xc, vy: 0xd },
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn load_instructions_with_f_prefix() {
         assert_eq!(
-            parse_instructions(&[0xFA07, 0xFB0A, 0xFC15]),
+            parse_instructions_from_opcodes(&[0xFA07, 0xFB0A, 0xFC15]),
             vec![
                 Instruction::LdVxDt { vx: 0xA },
                 Instruction::LdVxK { vx: 0xB },
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn load_instructions_with_e_prefix() {
         assert_eq!(
-            parse_instructions(&[0xEA9E, 0xEBA1]),
+            parse_instructions_from_opcodes(&[0xEA9E, 0xEBA1]),
             vec![Instruction::SkpVx { vx: 0xA }, Instruction::SknpVx { vx: 0xB },],
         );
     }
@@ -239,7 +239,7 @@ mod tests {
     #[test]
     fn load_draw_instruction() {
         assert_eq!(
-            parse_instructions(&[0xD123]),
+            parse_instructions_from_opcodes(&[0xD123]),
             vec![Instruction::Drw {
                 vx: 0x1,
                 vy: 0x2,
