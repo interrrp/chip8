@@ -1,8 +1,12 @@
+use std::fs;
+
 use anyhow::Result;
 use clap::Parser;
+use processor::Processor;
 
 mod instructions;
 mod memory;
+mod processor;
 mod registers;
 mod stack;
 
@@ -14,5 +18,8 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
+
+    Processor::from_program(&fs::read(args.program_path)?)?.run()?;
+
     Ok(())
 }

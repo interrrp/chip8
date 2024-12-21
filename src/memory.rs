@@ -73,10 +73,12 @@ mod tests {
     #[test]
     fn load_program() -> Result<()> {
         let mut memory = Memory::new();
-        memory.load_program(&[0x00E0, 0x00EE])?;
+        memory.load_program(&[0x00, 0xE0, 0x00, 0xEE])?;
 
-        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START)?, 0x00E0);
-        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 1)?, 0x00EE);
+        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START)?, 0x00);
+        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 1)?, 0xE0);
+        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 2)?, 0x00);
+        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 3)?, 0xEE);
 
         Ok(())
     }
