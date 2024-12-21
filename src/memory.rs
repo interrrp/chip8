@@ -1,8 +1,5 @@
 use anyhow::{anyhow, Result};
 
-pub(crate) const MEMORY_RESTRICTED_START: usize = 0;
-pub(crate) const MEMORY_RESTRICTED_END: usize = 0x200;
-
 pub(crate) const MEMORY_UNRESTRICTED_START: usize = 0x201;
 pub(crate) const MEMORY_UNRESTRICTED_END: usize = 0xFFF;
 pub(crate) const MEMORY_UNRESTRICTED_SIZE: usize = MEMORY_UNRESTRICTED_END - MEMORY_UNRESTRICTED_START;
