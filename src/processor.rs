@@ -28,14 +28,14 @@ impl Processor {
     pub fn run(&mut self) -> Result<()> {
         loop {
             let instruction = self.fetch_instruction()?;
-            println!("{:?}", instruction);
+            println!("{instruction:?}");
         }
     }
 
     fn fetch_instruction(&mut self) -> Result<Instruction> {
         let opcode = u16::from_be_bytes([self.memory.at(self.pc)?, self.memory.at(self.pc + 1)?]);
         self.pc += 2;
-        Ok(decode_instruction(opcode)?)
+        decode_instruction(opcode)
     }
 }
 

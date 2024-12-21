@@ -1,3 +1,6 @@
+#![deny(clippy::all)]
+#![warn(clippy::pedantic)]
+
 use std::fs;
 
 use anyhow::Result;

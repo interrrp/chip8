@@ -113,7 +113,7 @@ pub(crate) fn decode_instruction(op: u16) -> Result<Instruction> {
 
         0x9000 => Instruction::SneVxVy { vx, vy },
         0xA000 => Instruction::LdIAddr { addr },
-        0xB000 => Instruction::Jp { addr },
+        0xB000 => Instruction::JpV0 { addr },
         0xC000 => Instruction::Rnd { vx, byte },
         0xD000 => Instruction::Drw { vx, vy, nibble: e },
 
