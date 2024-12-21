@@ -5,6 +5,7 @@ use clap::Parser;
 use instruction::parse_instructions_from_opcodes;
 
 mod instruction;
+mod registers;
 
 /// A CHIP-8 emulator.
 #[derive(Parser)]

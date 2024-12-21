@@ -1,7 +1,6 @@
 /// An enumeration of all CHIP-8 instructions.
 ///
-/// This is based on [Cowgod's CHIP-8 Technical
-/// Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM).
+/// This is based on [Cowgod's CHIP-8 Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM).
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Instruction {
