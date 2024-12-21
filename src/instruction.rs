@@ -5,115 +5,80 @@
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Instruction {
-    /// Clear the display.
-    Cls,
-
-    /// Return from a subroutine.
-    ///
-    /// The interpreter sets the program counter to the address at the top of
-    /// the stack, then subtracts 1 from the stack pointer.
-    Ret,
-
     /// Jump to location `addr`.
-    ///
-    /// The interpreter sets the program counter to `addr`.
     Jp { addr: u16 },
+    /// Jump to location nnn + V0.
+    JpV0 { addr: u16 },
 
     /// Call subroutine at `addr`.
-    ///
-    /// The interpreter increments the stack pointer, then puts the current PC
-    /// on the top of the stack. The PC is then set to `addr`.
     Call { addr: u16 },
+    /// Return from a subroutine.
+    Ret,
 
     /// Skip next instruction if Vx = kk.
     SeVxByte { vx: u16, byte: u16 },
-
     /// Skip next instruction if Vx != kk.
     SneVxByte { vx: u16, byte: u16 },
-
     /// Skip next instruction if Vx = Vy.
     SeVxVy { vx: u16, vy: u16 },
-
-    /// Set Vx = kk.
-    LdVxByte { vx: u16, byte: u16 },
-
-    /// Set Vx = Vx + kk.
-    AddVxByte { vx: u16, byte: u16 },
-
-    /// Set Vx = Vy.
-    LdVxVy { vx: u16, vy: u16 },
-
-    /// Set Vx = Vx OR Vy.
-    OrVxVy { vx: u16, vy: u16 },
-
-    /// Set Vx = Vx AND Vy.
-    AndVxVy { vx: u16, vy: u16 },
-
-    /// Set Vx = Vx XOR Vy.
-    XorVxVy { vx: u16, vy: u16 },
-
-    /// Set Vx = Vx + Vy, set VF = carry.
-    AddVxVy { vx: u16, vy: u16 },
-
-    /// Set Vx = Vx - Vy, set VF = NOT borrow.
-    SubVxVy { vx: u16, vy: u16 },
-
-    /// Set Vx = Vx SHR 1.
-    ShrVx { vx: u16 },
-
-    /// Set Vx = Vy - Vx, set VF = NOT borrow.
-    SubnVxVy { vx: u16, vy: u16 },
-
-    /// Set Vx = Vx SHL 1.
-    ShlVx { vx: u16 },
-
     /// Skip next instruction if Vx != Vy.
     SneVxVy { vx: u16, vy: u16 },
+    /// Skip next instruction if key with the value of Vx is pressed.
+    Skp { vx: u16 },
+    /// Skip next instruction if key with the value of Vx is not pressed.
+    Sknp { vx: u16 },
 
+    /// Set Vx = byte.
+    LdVxByte { vx: u16, byte: u16 },
+    /// Set Vx = Vy.
+    LdVxVy { vx: u16, vy: u16 },
     /// Set I = addr.
     LdIAddr { addr: u16 },
-
-    /// Jump to location nnn + V0.
-    JpV0Addr { addr: u16 },
+    /// Wait for a key press, store the value of the key in Vx.
+    LdK { vx: u16 },
+    /// Set delay timer = Vx.
+    LdDt { vx: u16 },
+    /// Set sound timer = Vx.
+    LdSt { vx: u16 },
+    /// Set I = location of sprite for digit Vx.
+    LdF { vx: u16 },
+    /// Store BCD representation of Vx in memory locations I, I+1, and I+2.
+    LdB { vx: u16 },
+    /// Store registers V0 through Vx in memory starting at location I.
+    LdI { vx: u16 },
+    /// Read registers V0 through Vx from memory starting at location I.
+    LdIVx { vx: u16 },
 
     /// Set Vx = random byte AND kk.
     Rnd { vx: u16, byte: u16 },
 
+    /// Set Vx = Vx + kk.
+    AddVxByte { vx: u16, byte: u16 },
+    /// Set Vx = Vx + Vy, set VF = carry.
+    AddVxVy { vx: u16, vy: u16 },
+    /// Set I = I + Vx.
+    AddI { vx: u16 },
+    /// Set Vx = Vx - Vy, set VF = NOT borrow.
+    Sub { vx: u16, vy: u16 },
+    /// Set Vx = Vy - Vx, set VF = NOT borrow.
+    Subn { vx: u16, vy: u16 },
+
+    /// Set Vx = Vx AND Vy.
+    And { vx: u16, vy: u16 },
+    /// Set Vx = Vx OR Vy.
+    Or { vx: u16, vy: u16 },
+    /// Set Vx = Vx XOR Vy.
+    Xor { vx: u16, vy: u16 },
+
+    /// Set Vx = Vx SHR 1.
+    Shr { vx: u16 },
+    /// Set Vx = Vx SHL 1.
+    Shl { vx: u16 },
+
+    /// Clear the display.
+    Cls,
     /// Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
     Drw { vx: u16, vy: u16, nibble: u16 },
-
-    /// Skip next instruction if key with the value of Vx is pressed.
-    SkpVx { vx: u16 },
-
-    /// Skip next instruction if key with the value of Vx is not pressed.
-    SknpVx { vx: u16 },
-
-    /// Set Vx = delay timer value.
-    LdVxDt { vx: u16 },
-
-    /// Wait for a key press, store the value of the key in Vx.
-    LdVxK { vx: u16 },
-
-    /// Set delay timer = Vx.
-    LdDtVx { vx: u16 },
-
-    /// Set sound timer = Vx.
-    LdStVx { vx: u16 },
-
-    /// Set I = I + Vx.
-    AddIVx { vx: u16 },
-
-    /// Set I = location of sprite for digit Vx.
-    LdFVx { vx: u16 },
-
-    /// Store BCD representation of Vx in memory locations I, I+1, and I+2.
-    LdBVx { vx: u16 },
-
-    /// Store registers V0 through Vx in memory starting at location I.
-    LdIVx { vx: u16 },
-
-    /// Read registers V0 through Vx from memory starting at location I.
-    LdVxI { vx: u16 },
 }
 
 pub(crate) fn parse_instructions_from_opcodes(opcodes: &[u16]) -> Vec<Instruction> {
@@ -139,14 +104,14 @@ pub(crate) fn parse_instructions_from_opcodes(opcodes: &[u16]) -> Vec<Instructio
             0x7000 => Instruction::AddVxByte { vx, byte },
 
             0x8000 if e == 0 => Instruction::LdVxVy { vx, vy },
-            0x8000 if e == 1 => Instruction::OrVxVy { vx, vy },
-            0x8000 if e == 2 => Instruction::AndVxVy { vx, vy },
-            0x8000 if e == 3 => Instruction::XorVxVy { vx, vy },
+            0x8000 if e == 1 => Instruction::Or { vx, vy },
+            0x8000 if e == 2 => Instruction::And { vx, vy },
+            0x8000 if e == 3 => Instruction::Xor { vx, vy },
             0x8000 if e == 4 => Instruction::AddVxVy { vx, vy },
-            0x8000 if e == 5 => Instruction::SubVxVy { vx, vy },
-            0x8000 if e == 6 => Instruction::ShrVx { vx },
-            0x8000 if e == 7 => Instruction::SubnVxVy { vx, vy },
-            0x8000 if e == 0xE => Instruction::ShlVx { vx },
+            0x8000 if e == 5 => Instruction::Sub { vx, vy },
+            0x8000 if e == 6 => Instruction::Shr { vx },
+            0x8000 if e == 7 => Instruction::Subn { vx, vy },
+            0x8000 if e == 0xE => Instruction::Shl { vx },
 
             0x9000 => Instruction::SneVxVy { vx, vy },
             0xA000 => Instruction::LdIAddr { addr },
@@ -154,17 +119,17 @@ pub(crate) fn parse_instructions_from_opcodes(opcodes: &[u16]) -> Vec<Instructio
             0xC000 => Instruction::Rnd { vx, byte },
             0xD000 => Instruction::Drw { vx, vy, nibble: e },
 
-            0xE000 if byte == 0x9E => Instruction::SkpVx { vx },
-            0xE000 if byte == 0xA1 => Instruction::SknpVx { vx },
-            0xF000 if byte == 0x07 => Instruction::LdVxDt { vx },
-            0xF000 if byte == 0x0A => Instruction::LdVxK { vx },
-            0xF000 if byte == 0x15 => Instruction::LdDtVx { vx },
-            0xF000 if byte == 0x18 => Instruction::LdStVx { vx },
-            0xF000 if byte == 0x1E => Instruction::AddIVx { vx },
-            0xF000 if byte == 0x29 => Instruction::LdFVx { vx },
-            0xF000 if byte == 0x33 => Instruction::LdBVx { vx },
-            0xF000 if byte == 0x55 => Instruction::LdIVx { vx },
-            0xF000 if byte == 0x65 => Instruction::LdVxI { vx },
+            0xE000 if byte == 0x9E => Instruction::Skp { vx },
+            0xE000 if byte == 0xA1 => Instruction::Sknp { vx },
+            0xF000 if byte == 0x07 => Instruction::LdDt { vx },
+            0xF000 if byte == 0x0A => Instruction::LdK { vx },
+            0xF000 if byte == 0x15 => Instruction::LdDt { vx },
+            0xF000 if byte == 0x18 => Instruction::LdSt { vx },
+            0xF000 if byte == 0x1E => Instruction::AddI { vx },
+            0xF000 if byte == 0x29 => Instruction::LdF { vx },
+            0xF000 if byte == 0x33 => Instruction::LdB { vx },
+            0xF000 if byte == 0x55 => Instruction::LdI { vx },
+            0xF000 if byte == 0x65 => Instruction::LdIVx { vx },
 
             _ => continue,
         };
@@ -211,7 +176,7 @@ mod tests {
             parse_instructions_from_opcodes(&[0x8ab0, 0x8cd1]),
             vec![
                 Instruction::LdVxVy { vx: 0xa, vy: 0xb },
-                Instruction::OrVxVy { vx: 0xc, vy: 0xd },
+                Instruction::Or { vx: 0xc, vy: 0xd },
             ],
         );
     }
@@ -221,9 +186,9 @@ mod tests {
         assert_eq!(
             parse_instructions_from_opcodes(&[0xFA07, 0xFB0A, 0xFC15]),
             vec![
-                Instruction::LdVxDt { vx: 0xA },
-                Instruction::LdVxK { vx: 0xB },
-                Instruction::LdDtVx { vx: 0xC },
+                Instruction::LdDt { vx: 0xA },
+                Instruction::LdK { vx: 0xB },
+                Instruction::LdDt { vx: 0xC },
             ],
         );
     }
@@ -232,7 +197,7 @@ mod tests {
     fn load_instructions_with_e_prefix() {
         assert_eq!(
             parse_instructions_from_opcodes(&[0xEA9E, 0xEBA1]),
-            vec![Instruction::SkpVx { vx: 0xA }, Instruction::SknpVx { vx: 0xB },],
+            vec![Instruction::Skp { vx: 0xA }, Instruction::Sknp { vx: 0xB },],
         );
     }
 
