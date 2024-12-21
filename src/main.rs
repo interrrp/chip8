@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 
 mod instructions;
+mod memory;
 mod registers;
 mod stack;
 
