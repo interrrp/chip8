@@ -1,11 +1,9 @@
 use std::fs;
 
 use anyhow::{Context, Result};
-use chip8::Chip8;
 use clap::Parser;
 use instruction::parse_instructions_from_opcodes;
 
-mod chip8;
 mod instruction;
 
 /// A CHIP-8 emulator.
@@ -29,9 +27,7 @@ fn main() -> Result<()> {
         .collect();
     let instructions = parse_instructions_from_opcodes(&opcodes);
 
-    let mut chip8 = Chip8::new();
-    chip8.load_program(instructions);
-    chip8.run();
+    println!("{:?}", instructions);
 
     Ok(())
 }
