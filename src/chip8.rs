@@ -1,7 +1,8 @@
 use crate::instruction::Instruction;
 
 pub(crate) struct Chip8 {
-    pub registers: [u8; 15],
+    pub registers: [u8; 16],
+    pub memory: [u8; 4096],
     pub stack: [u16; 16],
     pub sp: usize,
     pub program: Vec<Instruction>,
@@ -11,7 +12,8 @@ pub(crate) struct Chip8 {
 impl Chip8 {
     pub fn new() -> Chip8 {
         Chip8 {
-            registers: [0; 15],
+            registers: [0; 16],
+            memory: [0; 4096],
             stack: [0; 16],
             sp: 0,
             program: Vec::new(),
@@ -32,6 +34,8 @@ impl Chip8 {
     fn do_instruction(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::Jp { addr } => self.pc = addr as usize,
+            Instruction::LdVxByte { vx, byte } => self.registers[vx as usize] = byte as u8,
+            Instruction::LdVxVy { vx, vy } => self.registers[vx as usize] = self.registers[vy as usize],
             _ => {}
         }
 
@@ -63,5 +67,20 @@ mod tests {
         assert_eq!(chip8.pc, 0);
         chip8.run();
         assert_eq!(chip8.pc, 0xa);
+    }
+
+    #[test]
+    fn load_registers() {
+        let mut chip8 = Chip8::new();
+        chip8.load_program(vec![
+            Instruction::LdVxByte { vx: 2, byte: 42 },
+            Instruction::LdVxVy { vx: 1, vy: 2 },
+        ]);
+
+        assert_eq!(chip8.registers[1], 0);
+        assert_eq!(chip8.registers[2], 0);
+        chip8.run();
+        assert_eq!(chip8.registers[1], 42);
+        assert_eq!(chip8.registers[2], 42);
     }
 }
