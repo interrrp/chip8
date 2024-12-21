@@ -6,7 +6,7 @@ use std::ops::{Index, IndexMut};
 /// > through F). There is also a 16-bit register called I. This register is generally used to store memory addresses,
 /// > so only the lowest (rightmost) 12 bits are usually used.
 /// >
-/// > [_Cowgod's CHIP-8 Technical Reference_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)
+/// > [_Cowgod's CHIP-8 Technical Reference, section 2.2_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2)
 pub(crate) struct Registers {
     registers: [u8; 16],
 }
