@@ -47,7 +47,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn new_initializes_stack_with_zeroes() {
+    fn init_stack_zeroes() {
         let stack = Stack::new();
         for i in 0..STACK_SIZE {
             assert_eq!(stack.stack[i], 0);
@@ -65,7 +65,7 @@ mod tests {
     }
 
     #[test]
-    fn error_when_out_of_bounds() {
+    fn out_of_bounds_error() {
         let mut stack = Stack::new();
         for _ in 0..STACK_SIZE {
             stack.push(7).unwrap();

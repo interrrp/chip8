@@ -143,7 +143,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn load_instructions_with_no_args() {
+    fn no_args() {
         assert_eq!(
             parse_instructions_from_opcodes(&[0x00E0, 0x00EE]),
             vec![Instruction::Cls, Instruction::Ret],
@@ -151,7 +151,7 @@ mod tests {
     }
 
     #[test]
-    fn load_instructions_with_addr_arg() {
+    fn addr_args() {
         assert_eq!(
             parse_instructions_from_opcodes(&[0x1abc, 0x2def]),
             vec![Instruction::Jp { addr: 0xabc }, Instruction::Call { addr: 0xdef }],
@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn load_instructions_with_vx_byte_args() {
+    fn byte_args() {
         assert_eq!(
             parse_instructions_from_opcodes(&[0x3abc, 0x4def]),
             vec![
@@ -170,7 +170,7 @@ mod tests {
     }
 
     #[test]
-    fn load_instructions_with_vx_vy_args() {
+    fn vx_vy_args() {
         assert_eq!(
             parse_instructions_from_opcodes(&[0x8ab0, 0x8cd1]),
             vec![
@@ -181,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    fn load_instructions_with_f_prefix() {
+    fn f_prefix() {
         assert_eq!(
             parse_instructions_from_opcodes(&[0xFA07, 0xFB0A, 0xFC15]),
             vec![
@@ -193,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn load_instructions_with_e_prefix() {
+    fn e_prefix() {
         assert_eq!(
             parse_instructions_from_opcodes(&[0xEA9E, 0xEBA1]),
             vec![Instruction::Skp { vx: 0xA }, Instruction::Sknp { vx: 0xB },],
@@ -201,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn load_draw_instruction() {
+    fn draw() {
         assert_eq!(
             parse_instructions_from_opcodes(&[0xD123]),
             vec![Instruction::Drw {
