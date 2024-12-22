@@ -41,8 +41,8 @@ impl Memory {
 
     /// Try to get the value at `index`.
     ///
-    /// If you try to access a restricted area (`0x0` to `0x200`), this will
-    /// return an error.
+    /// If you try to access a restricted area (0 to
+    /// `MEMORY_UNRESTRICTED_START`) return an error.
     pub fn at(&self, index: usize) -> Result<u8> {
         if is_restricted_area(index) {
             return Err(anyhow!(
@@ -55,10 +55,10 @@ impl Memory {
 
     /// Load a program into memory.
     ///
-    /// The program will start at `MEM_UNRESTRICTED_START`.
+    /// The program will start at `MEMORY_UNRESTRICTED_START`.
     ///
     /// If you try to load a program with length exceeding
-    /// `MEM_UNRESTRICTED_SIZE`, this will return an error.
+    /// `MEMORY_UNRESTRICTED_SIZE`, this will return an error.
     pub fn load_program(&mut self, program: &[u8]) -> Result<()> {
         if program.len() > MEMORY_PROGRAM_SIZE {
             return Err(anyhow!(

@@ -6,16 +6,27 @@ use crate::{
 };
 use anyhow::Result;
 
-/// The emulator itself. You could also call it the CPU.
+/// Represents a complete CHIP-8 emulator, managing the core system state.
+///
+/// # Components
+///
+/// - [`Registers`]: CPU registers for storing data and state
+/// - [`Stack`]: Call stack for managing subroutine return addresses
+/// - [`Memory`]: System memory for storing ROM and program data
+///
+/// This struct handles the processor ("CPU") logic.
 pub struct Emulator {
     registers: Registers,
     stack: Stack,
     memory: Memory,
+    /// Program counter indicating the current instruction address.
     pc: usize,
 }
 
 impl Emulator {
     /// Return a new emulator with `program` pre-loaded into memory.
+    ///
+    /// If the program exceeds the memory capacity, this returns an error.
     pub fn from_program(program: &[u8]) -> Result<Emulator> {
         let mut emulator = Emulator {
             registers: Registers::new(),
@@ -28,6 +39,9 @@ impl Emulator {
     }
 
     /// Repeatedly fetch and execute all instructions in memory.
+    ///
+    /// If there is any error fetching or doing an instruction, execution will
+    /// stop and the error will be returned.
     pub fn run(&mut self) -> Result<()> {
         while self.pc < MEMORY_PROGRAM_START + self.memory.program_len {
             let instruction = self.fetch_instruction()?;
@@ -36,6 +50,7 @@ impl Emulator {
         Ok(())
     }
 
+    /// Perform an instruction.
     fn do_instruction(&mut self, instruction: Instruction) {
         let r = &mut self.registers;
 
@@ -82,6 +97,13 @@ impl Emulator {
         }
     }
 
+    /// Return the next instruction.
+    ///
+    /// This takes the next two bytes, combines them to get an opcode, then
+    /// decodes the instruction.
+    ///
+    /// If the program counter is inside a restricted area (which should never
+    /// happen during normal circumstances), this will return an error.
     fn fetch_instruction(&mut self) -> Result<Instruction> {
         let opcode = u16::from_be_bytes([
             self.memory.at(self.pc)?,

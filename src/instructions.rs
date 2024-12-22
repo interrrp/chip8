@@ -2,7 +2,8 @@ use anyhow::{anyhow, Result};
 
 /// An enumeration of all CHIP-8 instructions.
 ///
-/// This is based on [Cowgod's CHIP-8 Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM).
+/// This is based on [Cowgod's CHIP-8 Technical
+/// Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM).
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Instruction {
@@ -83,6 +84,8 @@ pub enum Instruction {
 }
 
 /// Decode the instruction from an opcode.
+///
+/// If the opcode is unrecognized, this will return an error.
 pub fn decode_instruction(op: u16) -> Result<Instruction> {
     let vx = ((op & 0x0F00) >> 8) as usize;
     let vy = ((op & 0x00F0) >> 4) as usize;
