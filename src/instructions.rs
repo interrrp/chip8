@@ -90,35 +90,18 @@ pub(crate) fn decode_instruction(op: u16) -> Result<Instruction> {
     let e = (op & 0x000F) as u8;
 
     Ok(match op & 0xF000 {
-        0x0000 if op == 0x00E0 => Instruction::Cls,
         0x0000 if op == 0x00EE => Instruction::Ret,
-
         0x1000 => Instruction::Jp { addr },
         0x2000 => Instruction::Call { addr },
+        0xB000 => Instruction::JpV0 { addr },
         0x3000 => Instruction::SeVxByte { vx, byte },
         0x4000 => Instruction::SneVxByte { vx, byte },
         0x5000 => Instruction::SeVxVy { vx, vy },
-        0x6000 => Instruction::LdVxByte { vx, byte },
-        0x7000 => Instruction::AddVxByte { vx, byte },
-
-        0x8000 if e == 0 => Instruction::LdVxVy { vx, vy },
-        0x8000 if e == 1 => Instruction::Or { vx, vy },
-        0x8000 if e == 2 => Instruction::And { vx, vy },
-        0x8000 if e == 3 => Instruction::Xor { vx, vy },
-        0x8000 if e == 4 => Instruction::AddVxVy { vx, vy },
-        0x8000 if e == 5 => Instruction::Sub { vx, vy },
-        0x8000 if e == 6 => Instruction::Shr { vx },
-        0x8000 if e == 7 => Instruction::Subn { vx, vy },
-        0x8000 if e == 0xE => Instruction::Shl { vx },
-
         0x9000 => Instruction::SneVxVy { vx, vy },
-        0xA000 => Instruction::LdIAddr { addr },
-        0xB000 => Instruction::JpV0 { addr },
-        0xC000 => Instruction::Rnd { vx, byte },
-        0xD000 => Instruction::Drw { vx, vy, nibble: e },
 
-        0xE000 if byte == 0x9E => Instruction::Skp { vx },
-        0xE000 if byte == 0xA1 => Instruction::Sknp { vx },
+        0x6000 => Instruction::LdVxByte { vx, byte },
+        0x8000 if e == 0 => Instruction::LdVxVy { vx, vy },
+        0xA000 => Instruction::LdIAddr { addr },
         0xF000 if byte == 0x07 => Instruction::LdDt { vx },
         0xF000 if byte == 0x0A => Instruction::LdK { vx },
         0xF000 if byte == 0x15 => Instruction::LdDt { vx },
@@ -128,10 +111,29 @@ pub(crate) fn decode_instruction(op: u16) -> Result<Instruction> {
         0xF000 if byte == 0x33 => Instruction::LdB { vx },
         0xF000 if byte == 0x55 => Instruction::LdI { vx },
         0xF000 if byte == 0x65 => Instruction::LdIVx { vx },
+        0xC000 => Instruction::Rnd { vx, byte },
+
+        0x8000 if e == 1 => Instruction::Or { vx, vy },
+        0x8000 if e == 2 => Instruction::And { vx, vy },
+        0x8000 if e == 3 => Instruction::Xor { vx, vy },
+        0x8000 if e == 6 => Instruction::Shr { vx },
+        0x8000 if e == 0xE => Instruction::Shl { vx },
+
+        0x7000 => Instruction::AddVxByte { vx, byte },
+        0x8000 if e == 4 => Instruction::AddVxVy { vx, vy },
+        0x8000 if e == 5 => Instruction::Sub { vx, vy },
+        0x8000 if e == 7 => Instruction::Subn { vx, vy },
+
+        0xD000 => Instruction::Drw { vx, vy, nibble: e },
+        0x0000 if op == 0x00E0 => Instruction::Cls,
+
+        0xE000 if byte == 0x9E => Instruction::Skp { vx },
+        0xE000 if byte == 0xA1 => Instruction::Sknp { vx },
 
         _ => return Err(anyhow!("Unknown instruction (opcode {:#x})", op)),
     })
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

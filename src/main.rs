@@ -22,7 +22,10 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    Emulator::from_program(&fs::read(args.program_path)?)?.run()?;
+    let program = fs::read(args.program_path)?;
+
+    let mut emulator = Emulator::from_program(&program)?;
+    emulator.run()?;
 
     Ok(())
 }

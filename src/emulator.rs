@@ -6,6 +6,7 @@ use crate::{
 };
 use anyhow::Result;
 
+/// The emulator itself. You could also call it the CPU.
 pub(crate) struct Emulator {
     registers: Registers,
     stack: Stack,
