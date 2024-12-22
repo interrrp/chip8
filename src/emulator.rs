@@ -39,6 +39,30 @@ impl Emulator {
     fn do_instruction(&mut self, instruction: Instruction) -> Result<()> {
         match instruction {
             Instruction::Jp { addr } => self.pc = addr,
+            Instruction::JpV0 { addr } => self.pc = addr + self.registers[0] as usize,
+
+            // TODO: CALL
+            // TODO: RET
+            Instruction::SeVxByte { vx, byte } => {
+                if self.registers[vx] == byte {
+                    self.pc += 2;
+                }
+            }
+            Instruction::SneVxByte { vx, byte } => {
+                if self.registers[vx] != byte {
+                    self.pc += 2;
+                }
+            }
+            Instruction::SeVxVy { vx, vy } => {
+                if self.registers[vx] == self.registers[vy] {
+                    self.pc += 2;
+                }
+            }
+            Instruction::SneVxVy { vx, vy } => {
+                if self.registers[vx] != self.registers[vy] {
+                    self.pc += 2;
+                }
+            }
 
             Instruction::LdVxByte { vx, byte } => self.registers[vx] = byte,
             Instruction::LdVxVy { vx, vy } => self.registers[vx] = self.registers[vy],
@@ -76,7 +100,7 @@ mod tests {
 
         assert_eq!(emulator.fetch_instruction()?, Instruction::Cls);
         assert_eq!(emulator.fetch_instruction()?, Instruction::Ret);
-        assert!(emulator.fetch_instruction().is_err());
+        assert_eq!(emulator.fetch_instruction()?, Instruction::Nop);
 
         Ok(())
     }
@@ -96,6 +120,30 @@ mod tests {
         emulator.run()?;
         assert_eq!(emulator.registers[1], 0xab);
         assert_eq!(emulator.registers[2], 0xab);
+        Ok(())
+    }
+
+    #[test]
+    fn skip_if() -> Result<()> {
+        let mut emulator = Emulator::from_program(&[
+            0x61, 0x02, // LD  Vx=1 byte=2
+            0x62, 0x04, // LD  Vx=2 byte=4
+            0x31, 0x02, // SE  Vx=1 byte=2
+            0x63, 0x07, // LD  Vx=3 byte=7  Should not be executed
+            0x64, 0x04, // SNE Vx=2 byte=4
+            0x63, 0x06, // LD  Vx=3 byte=6  Should be executed
+            0x51, 0x20, // SE  Vx=1 Vy=2
+            0x64, 0x08, // LD  Vx=4 byte=8  Should be executed
+            0x91, 0x20, // SNE Vx=1 Vy=2
+            0x64, 0x09, // LD  Vx=4 byte=9  Should not be executed
+        ])?;
+        emulator.run()?;
+
+        assert_eq!(emulator.registers[1], 2);
+        assert_eq!(emulator.registers[2], 4);
+        assert_eq!(emulator.registers[3], 6);
+        assert_eq!(emulator.registers[4], 8);
+
         Ok(())
     }
 }

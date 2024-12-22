@@ -9,7 +9,7 @@ const STACK_SIZE: usize = 16;
 /// >
 /// > [_Cowgod's CHIP-8 Technical Reference, section 2.2_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2)
 pub(crate) struct Stack {
-    stack: [u16; STACK_SIZE],
+    stack: [usize; STACK_SIZE],
     pointer: usize,
 }
 
@@ -21,7 +21,7 @@ impl Stack {
         }
     }
 
-    pub fn push(&mut self, value: u16) -> Result<()> {
+    pub fn push(&mut self, value: usize) -> Result<()> {
         if self.pointer >= STACK_SIZE {
             return Err(anyhow!("Stack overflow (capacity {STACK_SIZE}, tried to push {value})"));
         }
@@ -32,7 +32,7 @@ impl Stack {
         Ok(())
     }
 
-    pub fn pop(&mut self) -> Result<u16> {
+    pub fn pop(&mut self) -> Result<usize> {
         if self.pointer == 0 {
             return Err(anyhow!("Stack underflow"));
         }

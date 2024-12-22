@@ -6,6 +6,8 @@ use anyhow::{anyhow, Result};
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Instruction {
+    /// Do nothing.
+    Nop,
     /// Jump to location `addr`.
     Jp { addr: usize },
     /// Jump to location nnn + V0.
@@ -91,6 +93,7 @@ pub(crate) fn decode_instruction(op: u16) -> Result<Instruction> {
     let e = (op & 0x000F) as u8;
 
     Ok(match op & 0xF000 {
+        0x0000 if op == 0x0000 => Instruction::Nop,
         0x0000 if op == 0x00EE => Instruction::Ret,
         0x1000 => Instruction::Jp { addr },
         0x2000 => Instruction::Call { addr },
