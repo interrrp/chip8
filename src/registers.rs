@@ -1,5 +1,7 @@
 use std::ops::{Index, IndexMut};
 
+const NUM_REGISTERS: usize = 16;
+
 /// The CPU registers.
 ///
 /// > Chip-8 has 16 general purpose 8-bit registers, usually referred to as Vx, where x is a hexadecimal digit (0
@@ -7,13 +9,17 @@ use std::ops::{Index, IndexMut};
 /// > so only the lowest (rightmost) 12 bits are usually used.
 /// >
 /// > [_Cowgod's CHIP-8 Technical Reference, section 2.2_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2)
-pub(crate) struct Registers {
-    registers: [u8; 16],
+pub struct Registers {
+    registers: [u8; NUM_REGISTERS],
+
+    /// The special 16-bit `I` register.
+    ///
+    /// This is generally used to store memory addresses.
     pub i: usize,
 }
 
 impl Registers {
-    /// Return a new `Registers` instance with every register's value as 0.
+    /// Return a `Registers` instance with every register set to 0.
     pub fn new() -> Registers {
         Registers {
             registers: [0; 16],
@@ -41,9 +47,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn new() {
+        let registers = Registers::new();
+
+        // Ensure that every register has a value of 0
+        for i in 0..NUM_REGISTERS {
+            assert_eq!(registers.registers[i], 0);
+        }
+
+        // ...including I
+        assert_eq!(registers.i, 0);
+    }
+
+    #[test]
     fn get_set() {
         let mut registers = Registers::new();
 
+        // Ensure that the Index and IndexMut implementations work as intended
         registers[1] = 2;
         registers[2] = 4;
         assert_eq!(registers[1], 2);

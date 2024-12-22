@@ -2,21 +2,24 @@ use std::ops::Range;
 
 use anyhow::{anyhow, Result};
 
-pub(crate) const MEMORY_UNRESTRICTED_START: usize = 0x201;
-pub(crate) const MEMORY_SIZE: usize = 0xFFF;
-pub(crate) const MEMORY_UNRESTRICTED_SIZE: usize = MEMORY_SIZE - MEMORY_UNRESTRICTED_START;
+pub const MEMORY_SIZE: usize = 0xFFF;
+pub const MEMORY_PROGRAM_START: usize = 0x201;
+pub const MEMORY_PROGRAM_SIZE: usize = MEMORY_SIZE - MEMORY_PROGRAM_START;
 
 /// The memory (RAM).
 ///
-/// > The Chip-8 language is capable of accessing up to 4KB (4,096 bytes) of RAM, from location 0x000 (0) to 0xFFF
-/// > (4095). The first 512 bytes, from 0x000 to 0x1FF, are where the original interpreter was located, and should not
-/// > be used by programs.
+/// > The Chip-8 language is capable of accessing up to 4KB (4,096 bytes) of
+/// > RAM, from location 0x000 (0) to 0xFFF (4095). The first 512 bytes, from
+/// > 0x000 to 0x1FF, are where the original interpreter was located, and should
+/// > not be used by programs.
 /// >
-/// > Most Chip-8 programs start at location 0x200 (512), but some begin at 0x600 (1536). Programs beginning at 0x600
-/// > are intended for the ETI 660 computer.
+/// > Most Chip-8 programs start at location 0x200 (512), but some begin at
+/// > 0x600 (1536). Programs beginning at 0x600 are intended for the ETI 660
+/// > computer.
 /// >
-/// > [_Cowgod's CHIP-8 Technical Reference, section 2.1_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.1)
-pub(crate) struct Memory {
+/// > [_Cowgod's CHIP-8 Technical Reference, section
+/// > 2.1_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.1)
+pub struct Memory {
     memory: [u8; MEMORY_SIZE],
 
     /// The length of the program loaded in memory.
@@ -38,21 +41,26 @@ impl Memory {
 
     /// Try to get the value at `index`.
     ///
-    /// If you try to access a restricted area (`0x0` to `0x200`), this will return an error.
+    /// If you try to access a restricted area (`0x0` to `0x200`), this will
+    /// return an error.
     pub fn at(&self, index: usize) -> Result<u8> {
         if is_restricted_area(index) {
-            return Err(anyhow!("Attempted access to restricted area: {:#x}", index));
+            return Err(anyhow!(
+                "Attempted access to restricted area: {:#x}",
+                index
+            ));
         }
         Ok(self.memory[index])
     }
 
     /// Load a program into memory.
     ///
-    /// The program will start at `MEMORY_UNRESTRICTED_START`.
+    /// The program will start at `MEM_UNRESTRICTED_START`.
     ///
-    /// If you try to load a program with length exceeding `MEMORY_UNRESTRICTED_SIZE`, this will return an error.
+    /// If you try to load a program with length exceeding
+    /// `MEM_UNRESTRICTED_SIZE`, this will return an error.
     pub fn load_program(&mut self, program: &[u8]) -> Result<()> {
-        if program.len() > MEMORY_UNRESTRICTED_SIZE {
+        if program.len() > MEMORY_PROGRAM_SIZE {
             return Err(anyhow!(
                 "Attempted to load program exceeding memory limit ({} bytes)",
                 program.len()
@@ -70,13 +78,15 @@ impl Memory {
 
 /// Determine whether an index is inside a restricted area.
 fn is_restricted_area(index: usize) -> bool {
-    index < MEMORY_UNRESTRICTED_START
+    index < MEMORY_PROGRAM_START
 }
 
 /// Return the area of a program in memory.
+///
+/// A program's area starts at the first unrestricted ("program") region.
 fn get_program_area(program: &[u8]) -> Range<usize> {
-    let start = MEMORY_UNRESTRICTED_START;
-    let end = MEMORY_UNRESTRICTED_START + program.len();
+    let start = MEMORY_PROGRAM_START;
+    let end = MEMORY_PROGRAM_START + program.len();
     start..end
 }
 
@@ -85,9 +95,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn init_memory_zeroes() -> Result<()> {
+    fn new() -> Result<()> {
         let memory = Memory::new();
-        for i in MEMORY_UNRESTRICTED_START..MEMORY_SIZE {
+        // Ensure every value in the program region is zero
+        for i in MEMORY_PROGRAM_START..MEMORY_SIZE {
             assert_eq!(memory.at(i)?, 0);
         }
         Ok(())
@@ -96,14 +107,16 @@ mod tests {
     #[test]
     fn access_restricted_error() {
         let memory = Memory::new();
-        for i in 0..MEMORY_UNRESTRICTED_START {
+        // Ensure access to every restricted area returns an error
+        for i in 0..MEMORY_PROGRAM_START {
             assert!(memory.at(i).is_err());
         }
     }
 
     #[test]
-    fn too_big_error() {
+    fn program_too_big_error() {
         let mut memory = Memory::new();
+        // Ensure loading a program that's too big returns an error
         assert!(memory.load_program(&[0; MEMORY_SIZE + 1]).is_err());
     }
 
@@ -112,10 +125,11 @@ mod tests {
         let mut memory = Memory::new();
         memory.load_program(&[0x00, 0xE0, 0x00, 0xEE])?;
 
-        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START)?, 0x00);
-        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 1)?, 0xE0);
-        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 2)?, 0x00);
-        assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 3)?, 0xEE);
+        // Ensure the program was correctly loaded into memory
+        assert_eq!(memory.at(MEMORY_PROGRAM_START)?, 0x00);
+        assert_eq!(memory.at(MEMORY_PROGRAM_START + 1)?, 0xE0);
+        assert_eq!(memory.at(MEMORY_PROGRAM_START + 2)?, 0x00);
+        assert_eq!(memory.at(MEMORY_PROGRAM_START + 3)?, 0xEE);
         assert_eq!(memory.program_len, 4);
 
         Ok(())

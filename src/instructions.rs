@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result};
 /// This is based on [Cowgod's CHIP-8 Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM).
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum Instruction {
+pub enum Instruction {
     /// Do nothing.
     Nop,
     /// Jump to location `addr`.
@@ -51,7 +51,6 @@ pub(crate) enum Instruction {
     LdI { vx: usize },
     /// Read registers V0 through Vx from memory starting at location I.
     LdIVx { vx: usize },
-
     /// Set Vx = random byte AND kk.
     Rnd { vx: usize, byte: u8 },
 
@@ -72,7 +71,6 @@ pub(crate) enum Instruction {
     Or { vx: usize, vy: usize },
     /// Set Vx = Vx XOR Vy.
     Xor { vx: usize, vy: usize },
-
     /// Set Vx = Vx SHR 1.
     Shr { vx: usize },
     /// Set Vx = Vx SHL 1.
@@ -85,7 +83,7 @@ pub(crate) enum Instruction {
 }
 
 /// Decode the instruction from an opcode.
-pub(crate) fn decode_instruction(op: u16) -> Result<Instruction> {
+pub fn decode_instruction(op: u16) -> Result<Instruction> {
     let vx = ((op & 0x0F00) >> 8) as usize;
     let vy = ((op & 0x00F0) >> 4) as usize;
     let byte = (op & 0x00FF) as u8;
@@ -94,14 +92,18 @@ pub(crate) fn decode_instruction(op: u16) -> Result<Instruction> {
 
     Ok(match op & 0xF000 {
         0x0000 if op == 0x0000 => Instruction::Nop,
-        0x0000 if op == 0x00EE => Instruction::Ret,
         0x1000 => Instruction::Jp { addr },
-        0x2000 => Instruction::Call { addr },
         0xB000 => Instruction::JpV0 { addr },
+
+        0x2000 => Instruction::Call { addr },
+        0x0000 if op == 0x00EE => Instruction::Ret,
+
         0x3000 => Instruction::SeVxByte { vx, byte },
         0x4000 => Instruction::SneVxByte { vx, byte },
         0x5000 => Instruction::SeVxVy { vx, vy },
         0x9000 => Instruction::SneVxVy { vx, vy },
+        0xE000 if byte == 0x9E => Instruction::Skp { vx },
+        0xE000 if byte == 0xA1 => Instruction::Sknp { vx },
 
         0x6000 => Instruction::LdVxByte { vx, byte },
         0x8000 if e == 0 => Instruction::LdVxVy { vx, vy },
@@ -131,9 +133,6 @@ pub(crate) fn decode_instruction(op: u16) -> Result<Instruction> {
         0xD000 => Instruction::Drw { vx, vy, nibble: e },
         0x0000 if op == 0x00E0 => Instruction::Cls,
 
-        0xE000 if byte == 0x9E => Instruction::Skp { vx },
-        0xE000 if byte == 0xA1 => Instruction::Sknp { vx },
-
         _ => return Err(anyhow!("Unknown instruction (opcode {:#x})", op)),
     })
 }
@@ -143,41 +142,59 @@ mod tests {
     use super::*;
 
     #[test]
-    fn no_arg() -> Result<()> {
+    fn with_no_args() -> Result<()> {
         assert_eq!(decode_instruction(0x00E0)?, Instruction::Cls);
         assert_eq!(decode_instruction(0x00EE)?, Instruction::Ret);
         Ok(())
     }
 
     #[test]
-    fn addr_args() -> Result<()> {
-        assert_eq!(decode_instruction(0x1abc)?, Instruction::Jp { addr: 0xabc });
-        assert_eq!(decode_instruction(0x2def)?, Instruction::Call { addr: 0xdef });
+    fn with_addr_arg() -> Result<()> {
+        assert_eq!(
+            decode_instruction(0x1abc)?,
+            Instruction::Jp { addr: 0xabc }
+        );
+        assert_eq!(
+            decode_instruction(0x2def)?,
+            Instruction::Call { addr: 0xdef }
+        );
         Ok(())
     }
 
     #[test]
-    fn byte_args() -> Result<()> {
+    fn with_byte_arg() -> Result<()> {
         assert_eq!(
             decode_instruction(0x3abc)?,
-            Instruction::SeVxByte { vx: 0xa, byte: 0xbc }
+            Instruction::SeVxByte {
+                vx: 0xa,
+                byte: 0xbc
+            }
         );
         assert_eq!(
             decode_instruction(0x4def)?,
-            Instruction::SneVxByte { vx: 0xd, byte: 0xef }
+            Instruction::SneVxByte {
+                vx: 0xd,
+                byte: 0xef
+            }
         );
         Ok(())
     }
 
     #[test]
-    fn vx_vy_args() -> Result<()> {
-        assert_eq!(decode_instruction(0x8ab0)?, Instruction::LdVxVy { vx: 0xa, vy: 0xb });
-        assert_eq!(decode_instruction(0x8cd1)?, Instruction::Or { vx: 0xc, vy: 0xd });
+    fn with_vx_vy() -> Result<()> {
+        assert_eq!(
+            decode_instruction(0x8ab0)?,
+            Instruction::LdVxVy { vx: 0xa, vy: 0xb }
+        );
+        assert_eq!(
+            decode_instruction(0x8cd1)?,
+            Instruction::Or { vx: 0xc, vy: 0xd }
+        );
         Ok(())
     }
 
     #[test]
-    fn f_prefix() -> Result<()> {
+    fn with_f_prefix() -> Result<()> {
         assert_eq!(decode_instruction(0xFA07)?, Instruction::LdDt { vx: 0xA });
         assert_eq!(decode_instruction(0xFB0A)?, Instruction::LdK { vx: 0xB });
         assert_eq!(decode_instruction(0xFC15)?, Instruction::LdDt { vx: 0xC });
@@ -185,7 +202,7 @@ mod tests {
     }
 
     #[test]
-    fn e_prefix() -> Result<()> {
+    fn with_e_prefix() -> Result<()> {
         assert_eq!(decode_instruction(0xEA9E)?, Instruction::Skp { vx: 0xA });
         assert_eq!(decode_instruction(0xEBA1)?, Instruction::Sknp { vx: 0xB });
         Ok(())

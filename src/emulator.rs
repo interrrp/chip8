@@ -1,13 +1,13 @@
 use crate::{
     instructions::{decode_instruction, Instruction},
-    memory::{Memory, MEMORY_UNRESTRICTED_START},
+    memory::{Memory, MEMORY_PROGRAM_START},
     registers::Registers,
     stack::Stack,
 };
 use anyhow::Result;
 
 /// The emulator itself. You could also call it the CPU.
-pub(crate) struct Emulator {
+pub struct Emulator {
     registers: Registers,
     stack: Stack,
     memory: Memory,
@@ -21,7 +21,7 @@ impl Emulator {
             registers: Registers::new(),
             stack: Stack::new(),
             memory: Memory::new(),
-            pc: MEMORY_UNRESTRICTED_START,
+            pc: MEMORY_PROGRAM_START,
         };
         emulator.memory.load_program(program)?;
         Ok(emulator)
@@ -29,7 +29,7 @@ impl Emulator {
 
     /// Repeatedly fetch and execute all instructions in memory.
     pub fn run(&mut self) -> Result<()> {
-        while self.pc < MEMORY_UNRESTRICTED_START + self.memory.program_len {
+        while self.pc < MEMORY_PROGRAM_START + self.memory.program_len {
             let instruction = self.fetch_instruction()?;
             self.do_instruction(instruction);
         }
@@ -44,7 +44,9 @@ impl Emulator {
             Instruction::JpV0 { addr } => self.pc = addr + r[0] as usize,
 
             Instruction::SeVxByte { vx, byte } if r[vx] == byte => self.pc += 2,
-            Instruction::SneVxByte { vx, byte } if r[vx] != byte => self.pc += 2,
+            Instruction::SneVxByte { vx, byte } if r[vx] != byte => {
+                self.pc += 2;
+            }
             Instruction::SeVxVy { vx, vy } if r[vx] == r[vy] => self.pc += 2,
             Instruction::SneVxVy { vx, vy } if r[vx] != r[vy] => self.pc += 2,
 
@@ -52,7 +54,9 @@ impl Emulator {
             Instruction::LdVxVy { vx, vy } => r[vx] = r[vy],
             Instruction::LdIAddr { addr } => r.i = addr,
 
-            Instruction::AddVxByte { vx, byte } => r[vx] = r[vx].wrapping_add(byte),
+            Instruction::AddVxByte { vx, byte } => {
+                r[vx] = r[vx].wrapping_add(byte);
+            }
             Instruction::AddVxVy { vx, vy } => {
                 let (result, carry) = r[vx].overflowing_add(r[vy]);
                 r[vx] = result;
@@ -70,14 +74,19 @@ impl Emulator {
                 r[0xf] = (!vf).into();
             }
 
-            Instruction::Drw { vx, vy, nibble } => println!("DRW {vx} {vy} {nibble}"),
+            Instruction::Drw { vx, vy, nibble } => {
+                println!("DRW {vx} {vy} {nibble}");
+            }
 
             _ => {}
         }
     }
 
     fn fetch_instruction(&mut self) -> Result<Instruction> {
-        let opcode = u16::from_be_bytes([self.memory.at(self.pc)?, self.memory.at(self.pc + 1)?]);
+        let opcode = u16::from_be_bytes([
+            self.memory.at(self.pc)?,
+            self.memory.at(self.pc + 1)?,
+        ]);
         self.pc += 2;
         decode_instruction(opcode)
     }
@@ -90,10 +99,10 @@ mod tests {
     #[test]
     fn load_program() -> Result<()> {
         let emulator = Emulator::from_program(&[0x00, 0xE0, 0x00, 0xEE])?;
-        assert_eq!(emulator.memory.at(MEMORY_UNRESTRICTED_START)?, 0x00);
-        assert_eq!(emulator.memory.at(MEMORY_UNRESTRICTED_START + 1)?, 0xE0);
-        assert_eq!(emulator.memory.at(MEMORY_UNRESTRICTED_START + 2)?, 0x00);
-        assert_eq!(emulator.memory.at(MEMORY_UNRESTRICTED_START + 3)?, 0xEE);
+        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START)?, 0x00);
+        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 1)?, 0xE0);
+        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 2)?, 0x00);
+        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 3)?, 0xEE);
         Ok(())
     }
 
@@ -111,7 +120,7 @@ mod tests {
     #[test]
     fn jp() -> Result<()> {
         let mut emulator = Emulator::from_program(&[0x12, 0x26])?;
-        assert_eq!(emulator.pc, MEMORY_UNRESTRICTED_START);
+        assert_eq!(emulator.pc, MEMORY_PROGRAM_START);
         emulator.run()?;
         assert_eq!(emulator.pc, 0x226);
         Ok(())

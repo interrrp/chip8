@@ -4,16 +4,19 @@ const STACK_SIZE: usize = 16;
 
 /// The CPU stack, used for storing return addresses during a subroutine.
 ///
-/// > The stack is an array of 16 16-bit values, used to store the address that the interpreter should return to when
-/// > finished with a subroutine. Chip-8 allows for up to 16 levels of nested subroutines.
+/// > The stack is an array of 16 16-bit values, used to store the address that
+/// > the interpreter should return to when finished with a subroutine. Chip-8
+/// > allows for up to 16 levels of nested subroutines.
 /// >
-/// > [_Cowgod's CHIP-8 Technical Reference, section 2.2_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2)
-pub(crate) struct Stack {
+/// > [_Cowgod's CHIP-8 Technical Reference, section
+/// > 2.2_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2)
+pub struct Stack {
     stack: [usize; STACK_SIZE],
     pointer: usize,
 }
 
 impl Stack {
+    /// Return an empty call stack.
     pub fn new() -> Stack {
         Stack {
             stack: [0; STACK_SIZE],
@@ -21,17 +24,24 @@ impl Stack {
         }
     }
 
-    pub fn push(&mut self, value: usize) -> Result<()> {
+    /// Push an address onto the call stack.
+    ///
+    /// This is called when entering a subroutine (`CALL`).
+    pub fn push(&mut self, address: usize) -> Result<()> {
         if self.pointer >= STACK_SIZE {
-            return Err(anyhow!("Stack overflow (capacity {STACK_SIZE}, tried to push {value})"));
+            return Err(anyhow!("Stack overflow (tried to push {address:#x})"));
         }
 
-        self.stack[self.pointer] = value;
+        self.stack[self.pointer] = address;
         self.pointer += 1;
 
         Ok(())
     }
 
+    /// Pop an address off the stack, and return the popped address.
+    ///
+    /// This is called when exiting a subroutine (`RET`), and the program
+    /// counter is set to the popped address.
     pub fn pop(&mut self) -> Result<usize> {
         if self.pointer == 0 {
             return Err(anyhow!("Stack underflow"));
@@ -47,7 +57,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn init_stack_zeroes() {
+    fn new() {
         let stack = Stack::new();
         for i in 0..STACK_SIZE {
             assert_eq!(stack.stack[i], 0);
@@ -65,7 +75,7 @@ mod tests {
     }
 
     #[test]
-    fn out_of_bounds_error() {
+    fn overflow_underflow_error() {
         let mut stack = Stack::new();
         for _ in 0..STACK_SIZE {
             stack.push(7).unwrap();
