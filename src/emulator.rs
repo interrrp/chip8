@@ -1,4 +1,5 @@
 use crate::{
+    display::Display,
     instructions::{decode_instruction, Instruction},
     memory::{Memory, MEMORY_PROGRAM_START},
     registers::Registers,
@@ -13,12 +14,14 @@ use anyhow::Result;
 /// - [`Registers`]: CPU registers for storing data and state
 /// - [`Stack`]: Call stack for managing subroutine return addresses
 /// - [`Memory`]: System memory for storing ROM and program data
+/// - [`Display`]: Display for drawing program output
 ///
 /// This struct handles the processor ("CPU") logic.
 pub struct Emulator {
     registers: Registers,
     stack: Stack,
     memory: Memory,
+    display: Display,
     /// Program counter indicating the current instruction address.
     pc: usize,
 }
@@ -32,6 +35,7 @@ impl Emulator {
             registers: Registers::new(),
             stack: Stack::new(),
             memory: Memory::new(),
+            display: Display::new(),
             pc: MEMORY_PROGRAM_START,
         };
         emulator.memory.load_program(program)?;
@@ -95,14 +99,40 @@ impl Emulator {
                 r[0xf] = (!vf).into();
             }
 
+            Instruction::Cls => self.display.clear(),
             Instruction::Drw { vx, vy, nibble } => {
-                println!("DRW {vx} {vy} {nibble}");
+                // Reset collision flag
+                self.registers[0xF] = 0;
+
+                // Get sprite coordinates from registers
+                let x = self.registers[vx] as usize % self.display.width;
+                let y = self.registers[vy] as usize % self.display.height;
+
+                // Draw each row of the sprite
+                for row in 0..nibble {
+                    let sprite_byte =
+                        self.memory.at(self.registers.i + row as usize)?;
+
+                    for bit in 0..8 {
+                        if (sprite_byte & (0x80 >> bit)) != 0 {
+                            let px = (x + bit) % self.display.width;
+                            let py = (y + row as usize) % self.display.height;
+
+                            // XOR pixel and set collision flag if pixel was previously set
+                            if self.display.xor_pixel(px, py) {
+                                self.registers[0xF] = 1;
+                            }
+                        }
+                    }
+                }
             }
 
             _ => {}
         }
 
         self.pc += 2;
+
+        self.display.render();
 
         Ok(())
     }
