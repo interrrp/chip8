@@ -16,12 +16,14 @@ pub(crate) const MEMORY_UNRESTRICTED_SIZE: usize = MEMORY_UNRESTRICTED_END - MEM
 /// > [_Cowgod's CHIP-8 Technical Reference, section 2.1_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.1)
 pub(crate) struct Memory {
     memory: [u8; MEMORY_UNRESTRICTED_END],
+    pub program_len: usize,
 }
 
 impl Memory {
     pub fn new() -> Memory {
         Memory {
             memory: [0; MEMORY_UNRESTRICTED_END],
+            program_len: 0,
         }
     }
 
@@ -40,6 +42,7 @@ impl Memory {
             ));
         }
 
+        self.program_len = program.len();
         self.memory[MEMORY_UNRESTRICTED_START..MEMORY_UNRESTRICTED_START + program.len()].copy_from_slice(program);
 
         Ok(())
@@ -76,6 +79,7 @@ mod tests {
         assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 1)?, 0xE0);
         assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 2)?, 0x00);
         assert_eq!(memory.at(MEMORY_UNRESTRICTED_START + 3)?, 0xEE);
+        assert_eq!(memory.program_len, 4);
 
         Ok(())
     }

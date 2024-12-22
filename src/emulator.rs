@@ -26,10 +26,20 @@ impl Emulator {
     }
 
     pub fn run(&mut self) -> Result<()> {
-        loop {
+        while self.pc < MEMORY_UNRESTRICTED_START + self.memory.program_len {
             let instruction = self.fetch_instruction()?;
-            println!("{instruction:?}");
+            self.do_instruction(instruction)?;
         }
+        Ok(())
+    }
+
+    fn do_instruction(&mut self, instruction: Instruction) -> Result<()> {
+        match instruction {
+            Instruction::Jp { addr } => self.pc = addr as usize,
+            _ => {}
+        }
+
+        Ok(())
     }
 
     fn fetch_instruction(&mut self) -> Result<Instruction> {
@@ -61,6 +71,15 @@ mod tests {
         assert_eq!(emulator.fetch_instruction()?, Instruction::Ret);
         assert!(emulator.fetch_instruction().is_err());
 
+        Ok(())
+    }
+
+    #[test]
+    fn jp() -> Result<()> {
+        let mut emulator = Emulator::from_program(&[0x12, 0x26])?;
+        assert_eq!(emulator.pc, MEMORY_UNRESTRICTED_START);
+        emulator.run()?;
+        assert_eq!(emulator.pc, 0x226);
         Ok(())
     }
 }
