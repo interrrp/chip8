@@ -82,6 +82,7 @@ pub(crate) enum Instruction {
     Drw { vx: usize, vy: usize, nibble: u8 },
 }
 
+/// Decode the instruction from an opcode.
 pub(crate) fn decode_instruction(op: u16) -> Result<Instruction> {
     let vx = ((op & 0x0F00) >> 8) as usize;
     let vy = ((op & 0x00F0) >> 4) as usize;

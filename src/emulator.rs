@@ -15,6 +15,7 @@ pub(crate) struct Emulator {
 }
 
 impl Emulator {
+    /// Return a new emulator with `program` pre-loaded into memory.
     pub fn from_program(program: &[u8]) -> Result<Emulator> {
         let mut emulator = Emulator {
             registers: Registers::new(),
@@ -26,6 +27,7 @@ impl Emulator {
         Ok(emulator)
     }
 
+    /// Repeatedly fetch and execute all instructions in memory.
     pub fn run(&mut self) -> Result<()> {
         while self.pc < MEMORY_UNRESTRICTED_START + self.memory.program_len {
             let instruction = self.fetch_instruction()?;

@@ -16,10 +16,17 @@ pub(crate) const MEMORY_UNRESTRICTED_SIZE: usize = MEMORY_UNRESTRICTED_END - MEM
 /// > [_Cowgod's CHIP-8 Technical Reference, section 2.1_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.1)
 pub(crate) struct Memory {
     memory: [u8; MEMORY_UNRESTRICTED_END],
+
+    /// The length of the program loaded in memory.
+    ///
+    /// If no program has been loaded, this is 0.
     pub program_len: usize,
 }
 
 impl Memory {
+    /// Return an empty memory.
+    ///
+    /// This fills up all the data with zeroes, and sets `program_len` to 0.
     pub fn new() -> Memory {
         Memory {
             memory: [0; MEMORY_UNRESTRICTED_END],
@@ -27,6 +34,9 @@ impl Memory {
         }
     }
 
+    /// Try to get the value at `index`.
+    ///
+    /// If you try to access a restricted area (`0x0` to `0x200`), this will return an error.
     pub fn at(&self, index: usize) -> Result<u8> {
         if index < MEMORY_UNRESTRICTED_START {
             return Err(anyhow!("Attempted access to restricted area: {:#x}", index));
@@ -34,6 +44,11 @@ impl Memory {
         Ok(self.memory[index])
     }
 
+    /// Load a program into memory.
+    ///
+    /// The program will start at `MEMORY_UNRESTRICTED_START`.
+    ///
+    /// If you try to load a program with length exceeding `MEMORY_UNRESTRICTED_SIZE`, this will return an error.
     pub fn load_program(&mut self, program: &[u8]) -> Result<()> {
         if program.len() > MEMORY_UNRESTRICTED_SIZE {
             return Err(anyhow!(

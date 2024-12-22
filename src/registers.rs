@@ -12,6 +12,7 @@ pub(crate) struct Registers {
 }
 
 impl Registers {
+    /// Return a new `Registers` instance with every register's value as 0.
     pub fn new() -> Registers {
         Registers { registers: [0; 16] }
     }
