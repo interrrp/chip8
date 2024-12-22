@@ -37,35 +37,37 @@ impl Emulator {
     }
 
     fn do_instruction(&mut self, instruction: Instruction) {
+        let r = &mut self.registers;
+
         match instruction {
             Instruction::Jp { addr } => self.pc = addr,
-            Instruction::JpV0 { addr } => self.pc = addr + self.registers[0] as usize,
+            Instruction::JpV0 { addr } => self.pc = addr + r[0] as usize,
 
-            Instruction::SeVxByte { vx, byte } if self.registers[vx] == byte => self.pc += 2,
-            Instruction::SneVxByte { vx, byte } if self.registers[vx] != byte => self.pc += 2,
-            Instruction::SeVxVy { vx, vy } if self.registers[vx] == self.registers[vy] => self.pc += 2,
-            Instruction::SneVxVy { vx, vy } if self.registers[vx] != self.registers[vy] => self.pc += 2,
+            Instruction::SeVxByte { vx, byte } if r[vx] == byte => self.pc += 2,
+            Instruction::SneVxByte { vx, byte } if r[vx] != byte => self.pc += 2,
+            Instruction::SeVxVy { vx, vy } if r[vx] == r[vy] => self.pc += 2,
+            Instruction::SneVxVy { vx, vy } if r[vx] != r[vy] => self.pc += 2,
 
-            Instruction::LdVxByte { vx, byte } => self.registers[vx] = byte,
-            Instruction::LdVxVy { vx, vy } => self.registers[vx] = self.registers[vy],
-            Instruction::LdIAddr { addr } => self.registers.i = addr,
+            Instruction::LdVxByte { vx, byte } => r[vx] = byte,
+            Instruction::LdVxVy { vx, vy } => r[vx] = r[vy],
+            Instruction::LdIAddr { addr } => r.i = addr,
 
-            Instruction::AddVxByte { vx, byte } => self.registers[vx] = self.registers[vx].wrapping_add(byte),
+            Instruction::AddVxByte { vx, byte } => r[vx] = r[vx].wrapping_add(byte),
             Instruction::AddVxVy { vx, vy } => {
-                let (result, carry) = self.registers[vx].overflowing_add(self.registers[vy]);
-                self.registers[vx] = result;
-                self.registers[0xf] = carry.into();
+                let (result, carry) = r[vx].overflowing_add(r[vy]);
+                r[vx] = result;
+                r[0xf] = carry.into();
             }
-            Instruction::AddI { vx } => self.registers.i = self.registers.i.wrapping_add(self.registers[vx] as usize),
+            Instruction::AddI { vx } => r.i = r.i.wrapping_add(r[vx] as usize),
             Instruction::Sub { vx, vy } => {
-                let (new_vx, vf) = self.registers[vx].overflowing_sub(self.registers[vy]);
-                self.registers[vx] = new_vx;
-                self.registers[0xf] = (!vf).into();
+                let (new_vx, vf) = r[vx].overflowing_sub(r[vy]);
+                r[vx] = new_vx;
+                r[0xf] = (!vf).into();
             }
             Instruction::Subn { vx, vy } => {
-                let (new_vx, vf) = self.registers[vy].overflowing_sub(self.registers[vx]);
-                self.registers[vx] = new_vx;
-                self.registers[0xf] = (!vf).into();
+                let (new_vx, vf) = r[vy].overflowing_sub(r[vx]);
+                r[vx] = new_vx;
+                r[0xf] = (!vf).into();
             }
 
             Instruction::Drw { vx, vy, nibble } => println!("DRW {vx} {vy} {nibble}"),
