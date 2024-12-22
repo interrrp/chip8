@@ -1,8 +1,10 @@
+use std::ops::Range;
+
 use anyhow::{anyhow, Result};
 
 pub(crate) const MEMORY_UNRESTRICTED_START: usize = 0x201;
-pub(crate) const MEMORY_UNRESTRICTED_END: usize = 0xFFF;
-pub(crate) const MEMORY_UNRESTRICTED_SIZE: usize = MEMORY_UNRESTRICTED_END - MEMORY_UNRESTRICTED_START;
+pub(crate) const MEMORY_SIZE: usize = 0xFFF;
+pub(crate) const MEMORY_UNRESTRICTED_SIZE: usize = MEMORY_SIZE - MEMORY_UNRESTRICTED_START;
 
 /// The memory (RAM).
 ///
@@ -15,7 +17,7 @@ pub(crate) const MEMORY_UNRESTRICTED_SIZE: usize = MEMORY_UNRESTRICTED_END - MEM
 /// >
 /// > [_Cowgod's CHIP-8 Technical Reference, section 2.1_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.1)
 pub(crate) struct Memory {
-    memory: [u8; MEMORY_UNRESTRICTED_END],
+    memory: [u8; MEMORY_SIZE],
 
     /// The length of the program loaded in memory.
     ///
@@ -29,7 +31,7 @@ impl Memory {
     /// This fills up all the data with zeroes, and sets `program_len` to 0.
     pub fn new() -> Memory {
         Memory {
-            memory: [0; MEMORY_UNRESTRICTED_END],
+            memory: [0; MEMORY_SIZE],
             program_len: 0,
         }
     }
@@ -38,7 +40,7 @@ impl Memory {
     ///
     /// If you try to access a restricted area (`0x0` to `0x200`), this will return an error.
     pub fn at(&self, index: usize) -> Result<u8> {
-        if index < MEMORY_UNRESTRICTED_START {
+        if is_restricted_area(index) {
             return Err(anyhow!("Attempted access to restricted area: {:#x}", index));
         }
         Ok(self.memory[index])
@@ -57,11 +59,25 @@ impl Memory {
             ));
         }
 
+        let area = get_program_area(program);
         self.program_len = program.len();
-        self.memory[MEMORY_UNRESTRICTED_START..MEMORY_UNRESTRICTED_START + program.len()].copy_from_slice(program);
+
+        self.memory[area].copy_from_slice(program);
 
         Ok(())
     }
+}
+
+/// Determine whether an index is inside a restricted area.
+fn is_restricted_area(index: usize) -> bool {
+    index < MEMORY_UNRESTRICTED_START
+}
+
+/// Return the area of a program in memory.
+fn get_program_area(program: &[u8]) -> Range<usize> {
+    let start = MEMORY_UNRESTRICTED_START;
+    let end = MEMORY_UNRESTRICTED_START + program.len();
+    start..end
 }
 
 #[cfg(test)]
@@ -71,7 +87,7 @@ mod tests {
     #[test]
     fn init_memory_zeroes() -> Result<()> {
         let memory = Memory::new();
-        for i in MEMORY_UNRESTRICTED_START..MEMORY_UNRESTRICTED_END {
+        for i in MEMORY_UNRESTRICTED_START..MEMORY_SIZE {
             assert_eq!(memory.at(i)?, 0);
         }
         Ok(())
@@ -83,6 +99,12 @@ mod tests {
         for i in 0..MEMORY_UNRESTRICTED_START {
             assert!(memory.at(i).is_err());
         }
+    }
+
+    #[test]
+    fn too_big_error() {
+        let mut memory = Memory::new();
+        assert!(memory.load_program(&[0; MEMORY_SIZE + 1]).is_err());
     }
 
     #[test]
