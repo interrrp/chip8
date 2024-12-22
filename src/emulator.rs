@@ -6,23 +6,23 @@ use crate::{
 };
 use anyhow::Result;
 
-pub(crate) struct Processor {
+pub(crate) struct Emulator {
     registers: Registers,
     stack: Stack,
     memory: Memory,
     pc: usize,
 }
 
-impl Processor {
-    pub fn from_program(program: &[u8]) -> Result<Processor> {
-        let mut processor = Processor {
+impl Emulator {
+    pub fn from_program(program: &[u8]) -> Result<Emulator> {
+        let mut emulator = Emulator {
             registers: Registers::new(),
             stack: Stack::new(),
             memory: Memory::new(),
             pc: MEMORY_UNRESTRICTED_START,
         };
-        processor.memory.load_program(program)?;
-        Ok(processor)
+        emulator.memory.load_program(program)?;
+        Ok(emulator)
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -45,21 +45,21 @@ mod tests {
 
     #[test]
     fn load_program() -> Result<()> {
-        let processor = Processor::from_program(&[0x00, 0xE0, 0x00, 0xEE])?;
-        assert_eq!(processor.memory.at(MEMORY_UNRESTRICTED_START)?, 0x00);
-        assert_eq!(processor.memory.at(MEMORY_UNRESTRICTED_START + 1)?, 0xE0);
-        assert_eq!(processor.memory.at(MEMORY_UNRESTRICTED_START + 2)?, 0x00);
-        assert_eq!(processor.memory.at(MEMORY_UNRESTRICTED_START + 3)?, 0xEE);
+        let emulator = Emulator::from_program(&[0x00, 0xE0, 0x00, 0xEE])?;
+        assert_eq!(emulator.memory.at(MEMORY_UNRESTRICTED_START)?, 0x00);
+        assert_eq!(emulator.memory.at(MEMORY_UNRESTRICTED_START + 1)?, 0xE0);
+        assert_eq!(emulator.memory.at(MEMORY_UNRESTRICTED_START + 2)?, 0x00);
+        assert_eq!(emulator.memory.at(MEMORY_UNRESTRICTED_START + 3)?, 0xEE);
         Ok(())
     }
 
     #[test]
     fn fetch_instruction() -> Result<()> {
-        let mut processor = Processor::from_program(&[0x00, 0xE0, 0x00, 0xEE])?;
+        let mut emulator = Emulator::from_program(&[0x00, 0xE0, 0x00, 0xEE])?;
 
-        assert_eq!(processor.fetch_instruction()?, Instruction::Cls);
-        assert_eq!(processor.fetch_instruction()?, Instruction::Ret);
-        assert!(processor.fetch_instruction().is_err());
+        assert_eq!(emulator.fetch_instruction()?, Instruction::Cls);
+        assert_eq!(emulator.fetch_instruction()?, Instruction::Ret);
+        assert!(emulator.fetch_instruction().is_err());
 
         Ok(())
     }
