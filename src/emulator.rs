@@ -31,46 +31,47 @@ impl Emulator {
     pub fn run(&mut self) -> Result<()> {
         while self.pc < MEMORY_UNRESTRICTED_START + self.memory.program_len {
             let instruction = self.fetch_instruction()?;
-            self.do_instruction(instruction)?;
+            self.do_instruction(instruction);
         }
         Ok(())
     }
 
-    fn do_instruction(&mut self, instruction: Instruction) -> Result<()> {
+    fn do_instruction(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::Jp { addr } => self.pc = addr,
             Instruction::JpV0 { addr } => self.pc = addr + self.registers[0] as usize,
 
-            // TODO: CALL
-            // TODO: RET
-            Instruction::SeVxByte { vx, byte } => {
-                if self.registers[vx] == byte {
-                    self.pc += 2;
-                }
-            }
-            Instruction::SneVxByte { vx, byte } => {
-                if self.registers[vx] != byte {
-                    self.pc += 2;
-                }
-            }
-            Instruction::SeVxVy { vx, vy } => {
-                if self.registers[vx] == self.registers[vy] {
-                    self.pc += 2;
-                }
-            }
-            Instruction::SneVxVy { vx, vy } => {
-                if self.registers[vx] != self.registers[vy] {
-                    self.pc += 2;
-                }
-            }
+            Instruction::SeVxByte { vx, byte } if self.registers[vx] == byte => self.pc += 2,
+            Instruction::SneVxByte { vx, byte } if self.registers[vx] != byte => self.pc += 2,
+            Instruction::SeVxVy { vx, vy } if self.registers[vx] == self.registers[vy] => self.pc += 2,
+            Instruction::SneVxVy { vx, vy } if self.registers[vx] != self.registers[vy] => self.pc += 2,
 
             Instruction::LdVxByte { vx, byte } => self.registers[vx] = byte,
             Instruction::LdVxVy { vx, vy } => self.registers[vx] = self.registers[vy],
+            Instruction::LdIAddr { addr } => self.registers.i = addr,
+
+            Instruction::AddVxByte { vx, byte } => self.registers[vx] = self.registers[vx].wrapping_add(byte),
+            Instruction::AddVxVy { vx, vy } => {
+                let (result, carry) = self.registers[vx].overflowing_add(self.registers[vy]);
+                self.registers[vx] = result;
+                self.registers[0xf] = carry.into();
+            }
+            Instruction::AddI { vx } => self.registers.i = self.registers.i.wrapping_add(self.registers[vx] as usize),
+            Instruction::Sub { vx, vy } => {
+                let (new_vx, vf) = self.registers[vx].overflowing_sub(self.registers[vy]);
+                self.registers[vx] = new_vx;
+                self.registers[0xf] = (!vf).into();
+            }
+            Instruction::Subn { vx, vy } => {
+                let (new_vx, vf) = self.registers[vy].overflowing_sub(self.registers[vx]);
+                self.registers[vx] = new_vx;
+                self.registers[0xf] = (!vf).into();
+            }
+
+            Instruction::Drw { vx, vy, nibble } => println!("DRW {vx} {vy} {nibble}"),
 
             _ => {}
         }
-
-        Ok(())
     }
 
     fn fetch_instruction(&mut self) -> Result<Instruction> {
@@ -126,16 +127,16 @@ mod tests {
     #[test]
     fn skip_if() -> Result<()> {
         let mut emulator = Emulator::from_program(&[
-            0x61, 0x02, // LD  Vx=1 byte=2
-            0x62, 0x04, // LD  Vx=2 byte=4
-            0x31, 0x02, // SE  Vx=1 byte=2
-            0x63, 0x07, // LD  Vx=3 byte=7  Should not be executed
-            0x64, 0x04, // SNE Vx=2 byte=4
-            0x63, 0x06, // LD  Vx=3 byte=6  Should be executed
-            0x51, 0x20, // SE  Vx=1 Vy=2
-            0x64, 0x08, // LD  Vx=4 byte=8  Should be executed
-            0x91, 0x20, // SNE Vx=1 Vy=2
-            0x64, 0x09, // LD  Vx=4 byte=9  Should not be executed
+            0x61, 0x02, // LD  V1 2   |
+            0x62, 0x04, // LD  V2 4   |
+            0x31, 0x02, // SE  V1 2   |
+            0x63, 0x07, // LD  V3 7   |- Should not be executed
+            0x64, 0x04, // SNE V2 4   |
+            0x63, 0x06, // LD  V3 6   |- Should be executed
+            0x51, 0x20, // SE  V1 V2  |
+            0x64, 0x08, // LD  V4 8   |- Should be executed
+            0x91, 0x20, // SNE V1 V2  |
+            0x64, 0x09, // LD  V4 9   |- Should not be executed
         ])?;
         emulator.run()?;
 
@@ -143,6 +144,24 @@ mod tests {
         assert_eq!(emulator.registers[2], 4);
         assert_eq!(emulator.registers[3], 6);
         assert_eq!(emulator.registers[4], 8);
+
+        Ok(())
+    }
+
+    #[test]
+    fn arithmetic() -> Result<()> {
+        let mut emulator = Emulator::from_program(&[
+            0x61, 0x02, // LD   V1 2   |  V1=2
+            0x62, 0x04, // LD   V2 4   |  V1=2 V2=4
+            0x72, 0x02, // ADD  V2 2   |  V1=2 V2=6
+            0x81, 0x24, // ADD  V1 V2  |  V1=8 V2=6
+            0x81, 0x25, // SUB  V1 V2  |  V1=2 V2=6
+            0x81, 0x27, // SUBN V2 V1  |  V1=4 V2=6
+        ])?;
+        emulator.run()?;
+
+        assert_eq!(emulator.registers[1], 4);
+        assert_eq!(emulator.registers[2], 6);
 
         Ok(())
     }

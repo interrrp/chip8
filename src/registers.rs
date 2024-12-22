@@ -9,12 +9,16 @@ use std::ops::{Index, IndexMut};
 /// > [_Cowgod's CHIP-8 Technical Reference, section 2.2_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2)
 pub(crate) struct Registers {
     registers: [u8; 16],
+    pub i: usize,
 }
 
 impl Registers {
     /// Return a new `Registers` instance with every register's value as 0.
     pub fn new() -> Registers {
-        Registers { registers: [0; 16] }
+        Registers {
+            registers: [0; 16],
+            i: 0,
+        }
     }
 }
 
