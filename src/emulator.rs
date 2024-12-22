@@ -45,18 +45,24 @@ impl Emulator {
     pub fn run(&mut self) -> Result<()> {
         while self.pc < MEMORY_PROGRAM_START + self.memory.program_len {
             let instruction = self.fetch_instruction()?;
-            self.do_instruction(instruction);
+            self.do_instruction(instruction)?;
         }
         Ok(())
     }
 
     /// Perform an instruction.
-    fn do_instruction(&mut self, instruction: Instruction) {
+    fn do_instruction(&mut self, instruction: Instruction) -> Result<()> {
         let r = &mut self.registers;
 
         match instruction {
-            Instruction::Jp { addr } => self.pc = addr,
-            Instruction::JpV0 { addr } => self.pc = addr + r[0] as usize,
+            Instruction::Jp { addr } => self.pc = addr - 2,
+            Instruction::JpV0 { addr } => self.pc = addr + r[0] as usize - 2,
+
+            Instruction::Call { addr } => {
+                self.stack.push(addr - 5)?;
+                self.pc = addr - 1;
+            }
+            Instruction::Ret => self.pc = self.stack.pop()?,
 
             Instruction::SeVxByte { vx, byte } if r[vx] == byte => self.pc += 2,
             Instruction::SneVxByte { vx, byte } if r[vx] != byte => {
@@ -95,6 +101,10 @@ impl Emulator {
 
             _ => {}
         }
+
+        self.pc += 2;
+
+        Ok(())
     }
 
     /// Return the next instruction.
@@ -109,7 +119,6 @@ impl Emulator {
             self.memory.at(self.pc)?,
             self.memory.at(self.pc + 1)?,
         ]);
-        self.pc += 2;
         decode_instruction(opcode)
     }
 }
@@ -133,7 +142,9 @@ mod tests {
         let mut emulator = Emulator::from_program(&[0x00, 0xE0, 0x00, 0xEE])?;
 
         assert_eq!(emulator.fetch_instruction()?, Instruction::Cls);
+        emulator.pc += 2;
         assert_eq!(emulator.fetch_instruction()?, Instruction::Ret);
+        emulator.pc += 2;
         assert_eq!(emulator.fetch_instruction()?, Instruction::Nop);
 
         Ok(())
@@ -195,6 +206,23 @@ mod tests {
 
         assert_eq!(emulator.registers[1], 4);
         assert_eq!(emulator.registers[2], 6);
+
+        Ok(())
+    }
+
+    #[test]
+    fn subroutines() -> Result<()> {
+        let mut emulator = Emulator::from_program(&[
+            0x22, 0x06, // CALL 0x206    |- Call subroutine
+            0x62, 0x07, // LD   V2 0x07  |- After return from subroutine
+            0x13, 0x00, // JP   0x300    |- Jump to exit
+            0x61, 0x42, // LD   V1 0x42  |- Subroutine
+            0x00, 0xEE, // RET           |- Return from subroutine
+        ])?;
+        emulator.run()?;
+
+        assert_eq!(emulator.registers[1], 0x42);
+        assert_eq!(emulator.registers[2], 0x07);
 
         Ok(())
     }
