@@ -7,6 +7,7 @@ use anyhow::Result;
 use clap::Parser;
 use emulator::Emulator;
 
+mod display;
 mod emulator;
 mod instructions;
 mod memory;

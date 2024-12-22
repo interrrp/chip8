@@ -113,7 +113,7 @@ impl Emulator {
     /// decodes the instruction.
     ///
     /// If the program counter is inside a restricted area (which should never
-    /// happen during normal circumstances), this will return an error.
+    /// happen under normal circumstances), this will return an error.
     fn fetch_instruction(&mut self) -> Result<Instruction> {
         let opcode = u16::from_be_bytes([
             self.memory.at(self.pc)?,
