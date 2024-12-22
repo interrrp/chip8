@@ -7,87 +7,87 @@ use anyhow::{anyhow, Result};
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Instruction {
     /// Jump to location `addr`.
-    Jp { addr: u16 },
+    Jp { addr: usize },
     /// Jump to location nnn + V0.
-    JpV0 { addr: u16 },
+    JpV0 { addr: usize },
 
     /// Call subroutine at `addr`.
-    Call { addr: u16 },
+    Call { addr: usize },
     /// Return from a subroutine.
     Ret,
 
     /// Skip next instruction if Vx = kk.
-    SeVxByte { vx: u16, byte: u16 },
+    SeVxByte { vx: usize, byte: u8 },
     /// Skip next instruction if Vx != kk.
-    SneVxByte { vx: u16, byte: u16 },
+    SneVxByte { vx: usize, byte: u8 },
     /// Skip next instruction if Vx = Vy.
-    SeVxVy { vx: u16, vy: u16 },
+    SeVxVy { vx: usize, vy: usize },
     /// Skip next instruction if Vx != Vy.
-    SneVxVy { vx: u16, vy: u16 },
+    SneVxVy { vx: usize, vy: usize },
     /// Skip next instruction if key with the value of Vx is pressed.
-    Skp { vx: u16 },
+    Skp { vx: usize },
     /// Skip next instruction if key with the value of Vx is not pressed.
-    Sknp { vx: u16 },
+    Sknp { vx: usize },
 
     /// Set Vx = byte.
-    LdVxByte { vx: u16, byte: u16 },
+    LdVxByte { vx: usize, byte: u8 },
     /// Set Vx = Vy.
-    LdVxVy { vx: u16, vy: u16 },
+    LdVxVy { vx: usize, vy: usize },
     /// Set I = addr.
-    LdIAddr { addr: u16 },
+    LdIAddr { addr: usize },
     /// Wait for a key press, store the value of the key in Vx.
-    LdK { vx: u16 },
+    LdK { vx: usize },
     /// Set delay timer = Vx.
-    LdDt { vx: u16 },
+    LdDt { vx: usize },
     /// Set sound timer = Vx.
-    LdSt { vx: u16 },
+    LdSt { vx: usize },
     /// Set I = location of sprite for digit Vx.
-    LdF { vx: u16 },
+    LdF { vx: usize },
     /// Store BCD representation of Vx in memory locations I, I+1, and I+2.
-    LdB { vx: u16 },
+    LdB { vx: usize },
     /// Store registers V0 through Vx in memory starting at location I.
-    LdI { vx: u16 },
+    LdI { vx: usize },
     /// Read registers V0 through Vx from memory starting at location I.
-    LdIVx { vx: u16 },
+    LdIVx { vx: usize },
 
     /// Set Vx = random byte AND kk.
-    Rnd { vx: u16, byte: u16 },
+    Rnd { vx: usize, byte: u8 },
 
     /// Set Vx = Vx + kk.
-    AddVxByte { vx: u16, byte: u16 },
+    AddVxByte { vx: usize, byte: u8 },
     /// Set Vx = Vx + Vy, set VF = carry.
-    AddVxVy { vx: u16, vy: u16 },
+    AddVxVy { vx: usize, vy: usize },
     /// Set I = I + Vx.
-    AddI { vx: u16 },
+    AddI { vx: usize },
     /// Set Vx = Vx - Vy, set VF = NOT borrow.
-    Sub { vx: u16, vy: u16 },
+    Sub { vx: usize, vy: usize },
     /// Set Vx = Vy - Vx, set VF = NOT borrow.
-    Subn { vx: u16, vy: u16 },
+    Subn { vx: usize, vy: usize },
 
     /// Set Vx = Vx AND Vy.
-    And { vx: u16, vy: u16 },
+    And { vx: usize, vy: usize },
     /// Set Vx = Vx OR Vy.
-    Or { vx: u16, vy: u16 },
+    Or { vx: usize, vy: usize },
     /// Set Vx = Vx XOR Vy.
-    Xor { vx: u16, vy: u16 },
+    Xor { vx: usize, vy: usize },
 
     /// Set Vx = Vx SHR 1.
-    Shr { vx: u16 },
+    Shr { vx: usize },
     /// Set Vx = Vx SHL 1.
-    Shl { vx: u16 },
+    Shl { vx: usize },
 
     /// Clear the display.
     Cls,
     /// Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-    Drw { vx: u16, vy: u16, nibble: u16 },
+    Drw { vx: usize, vy: usize, nibble: u8 },
 }
 
 pub(crate) fn decode_instruction(op: u16) -> Result<Instruction> {
-    let vx = (op & 0x0F00) >> 8;
-    let vy = (op & 0x00F0) >> 4;
-    let byte = op & 0x00FF;
-    let addr = op & 0x0FFF;
-    let e = op & 0x000F;
+    let vx = ((op & 0x0F00) >> 8) as usize;
+    let vy = ((op & 0x00F0) >> 4) as usize;
+    let byte = (op & 0x00FF) as u8;
+    let addr = (op & 0x0FFF) as usize;
+    let e = (op & 0x000F) as u8;
 
     Ok(match op & 0xF000 {
         0x0000 if op == 0x00E0 => Instruction::Cls,

@@ -35,7 +35,11 @@ impl Emulator {
 
     fn do_instruction(&mut self, instruction: Instruction) -> Result<()> {
         match instruction {
-            Instruction::Jp { addr } => self.pc = addr as usize,
+            Instruction::Jp { addr } => self.pc = addr,
+
+            Instruction::LdVxByte { vx, byte } => self.registers[vx] = byte,
+            Instruction::LdVxVy { vx, vy } => self.registers[vx] = self.registers[vy],
+
             _ => {}
         }
 
@@ -80,6 +84,15 @@ mod tests {
         assert_eq!(emulator.pc, MEMORY_UNRESTRICTED_START);
         emulator.run()?;
         assert_eq!(emulator.pc, 0x226);
+        Ok(())
+    }
+
+    #[test]
+    fn ld() -> Result<()> {
+        let mut emulator = Emulator::from_program(&[0x61, 0xab, 0x82, 0x10])?;
+        emulator.run()?;
+        assert_eq!(emulator.registers[1], 0xab);
+        assert_eq!(emulator.registers[2], 0xab);
         Ok(())
     }
 }
