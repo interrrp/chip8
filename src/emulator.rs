@@ -17,6 +17,7 @@ use anyhow::Result;
 /// - [`Display`]: Display for drawing program output
 ///
 /// This struct handles the processor ("CPU") logic.
+#[derive(Debug, Clone, Copy)]
 pub struct Emulator {
     registers: Registers,
     stack: Stack,

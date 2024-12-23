@@ -19,6 +19,7 @@ pub const MEMORY_PROGRAM_SIZE: usize = MEMORY_SIZE - MEMORY_PROGRAM_START;
 /// >
 /// > [_Cowgod's CHIP-8 Technical Reference, section
 /// > 2.1_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.1)
+#[derive(Debug, Clone, Copy)]
 pub struct Memory {
     memory: [u8; MEMORY_SIZE],
 

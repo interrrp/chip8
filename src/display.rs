@@ -4,6 +4,7 @@ const DISPLAY_WIDTH: usize = 64;
 const DISPLAY_HEIGHT: usize = 32;
 const DISPLAY_PIXELS: usize = DISPLAY_WIDTH * DISPLAY_HEIGHT;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Display {
     pixels: [bool; DISPLAY_PIXELS],
     pub width: usize,

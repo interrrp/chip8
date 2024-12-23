@@ -15,7 +15,7 @@ mod registers;
 mod stack;
 
 /// A CHIP-8 emulator.
-#[derive(Parser)]
+#[derive(Parser, Debug, Clone)]
 struct Args {
     program_path: String,
 }

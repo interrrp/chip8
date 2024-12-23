@@ -9,6 +9,7 @@ const NUM_REGISTERS: usize = 16;
 /// > so only the lowest (rightmost) 12 bits are usually used.
 /// >
 /// > [_Cowgod's CHIP-8 Technical Reference, section 2.2_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2)
+#[derive(Debug, Clone, Copy)]
 pub struct Registers {
     registers: [u8; NUM_REGISTERS],
 
