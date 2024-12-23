@@ -59,7 +59,7 @@ impl Emulator {
         let r = &mut self.registers;
 
         match instruction {
-            Instruction::Jp { addr } => self.pc = addr - 2,
+            Instruction::Jp { addr } => self.pc = addr - 1,
             Instruction::JpV0 { addr } => self.pc = addr + r[0] as usize - 2,
 
             Instruction::Call { addr } => {
@@ -181,11 +181,18 @@ mod tests {
     }
 
     #[test]
-    fn jp() -> Result<()> {
-        let mut emulator = Emulator::from_program(&[0x12, 0x26])?;
-        assert_eq!(emulator.pc, MEMORY_PROGRAM_START);
+    fn jump() -> Result<()> {
+        let mut emulator = Emulator::from_program(&[
+            0x61, 0x42, // LD V1    0x42  |- Load initial value
+            0x12, 0x06, // JP 0x206       |- Jump over the bad instruction
+            0x61, 0xFF, // LD V1    0xFF  |- This should be skipped
+            0x62, 0x24, // LD V2    0x24  |- This is where we jump to
+        ])?;
         emulator.run()?;
-        assert_eq!(emulator.pc, 0x226);
+
+        assert_eq!(emulator.registers[1], 0x42);
+        assert_eq!(emulator.registers[2], 0x24);
+
         Ok(())
     }
 
