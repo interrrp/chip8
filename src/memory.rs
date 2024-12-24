@@ -1,144 +1,170 @@
-use std::ops::Range;
+use std::ops::{Index, IndexMut};
 
-use anyhow::{anyhow, Result};
+use anyhow::bail;
+use log::warn;
 
-pub const MEMORY_SIZE: usize = 0xFFF;
-pub const MEMORY_PROGRAM_START: usize = 0x201;
-pub const MEMORY_PROGRAM_SIZE: usize = MEMORY_SIZE - MEMORY_PROGRAM_START;
-
-const FONTSET_SIZE: usize = 0x50;
-const FONTSET: [u8; FONTSET_SIZE] = [
-    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-    0x20, 0x60, 0x20, 0x20, 0x70, // 1
-    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
-];
-
-/// The memory (RAM).
+/// The start of the program's memory.
 ///
-/// > The Chip-8 language is capable of accessing up to 4KB (4,096 bytes) of
-/// > RAM, from location 0x000 (0) to 0xFFF (4095). The first 512 bytes, from
-/// > 0x000 to 0x1FF, are where the original interpreter was located, and should
-/// > not be used by programs.
-/// >
-/// > Most Chip-8 programs start at location 0x200 (512), but some begin at
-/// > 0x600 (1536). Programs beginning at 0x600 are intended for the ETI 660
-/// > computer.
-/// >
-/// > [_Cowgod's CHIP-8 Technical Reference, section
-/// > 2.1_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.1)
+/// From _CHIP-8 Technical Reference (Matthew Mikolay)_:
 ///
-/// Though unspecified in the technical reference, the fontset starts at memory address `0`.
+/// > CHIP-8 programs should be loaded into memory starting at address `0x200`.
+pub const MEMORY_PROGRAM_START: usize = 0x200;
+const MEMORY_SIZE: usize = 0xFFF;
+const MEMORY_PROGRAM_SIZE: usize = MEMORY_SIZE - MEMORY_PROGRAM_START;
+
+/// System memory.
+///
+/// From _CHIP-8 Technical Reference (Matthew Mikolay)_:
+///
+/// > CHIP-8 programs should be loaded into memory starting at address `0x200`. The memory addresses
+/// > `0x000` to `0x1FF` are reserved for the CHIP-8 interpreter.
+/// >
+/// > In addition, the final 352 bytes of memory are reserved for “variables and display refresh,”
+/// > and should not be used in CHIP-8 programs.
 #[derive(Debug, Clone, Copy)]
 pub struct Memory {
     memory: [u8; MEMORY_SIZE],
 
-    /// The length of the program loaded in memory.
+    /// The size of the program loaded by [`Memory::load_program`].
     ///
     /// If no program has been loaded, this is 0.
     pub program_len: usize,
 }
 
 impl Memory {
-    /// Return an empty memory.
-    ///
-    /// This fills up all the data with zeroes (except for the fontset, starting from `0x0` to
-    /// `0x50`), and sets `program_len` to 0.
+    /// Return an instance of system memory with everything set to zero.
     pub fn new() -> Memory {
-        let mut memory = Memory {
+        Memory {
             memory: [0; MEMORY_SIZE],
             program_len: 0,
-        };
-
-        memory.memory[0..FONTSET_SIZE].copy_from_slice(&FONTSET);
-
-        memory
-    }
-
-    /// Try to get the value at `index`.
-    pub fn at(&self, index: usize) -> u8 {
-        self.memory[index]
+        }
     }
 
     /// Load a program into memory.
     ///
-    /// The program will start at `MEMORY_PROGRAM_START`.
-    pub fn load_program(&mut self, program: &[u8]) -> Result<()> {
+    /// The loaded program starts at `0x200`.
+    ///
+    /// This returns an error if the program cannot be fit into memory (exceeds
+    /// a length of 3583).
+    pub fn load_program(&mut self, program: &[u8]) -> anyhow::Result<()> {
         if program.len() > MEMORY_PROGRAM_SIZE {
-            return Err(anyhow!(
-                "Attempted to load program exceeding memory limit ({} bytes)",
-                program.len()
-            ));
+            bail!("Program cannot fit in memory (length {})", program.len());
         }
 
-        let area = get_program_area(program);
         self.program_len = program.len();
 
-        self.memory[area].copy_from_slice(program);
+        self.memory[MEMORY_PROGRAM_START..MEMORY_PROGRAM_START + program.len()]
+            .copy_from_slice(program);
 
         Ok(())
     }
 }
 
-/// Return the area of a program in memory.
-///
-/// A program's area starts at the first unrestricted/"program" region.
-fn get_program_area(program: &[u8]) -> Range<usize> {
-    let start = MEMORY_PROGRAM_START;
-    let end = MEMORY_PROGRAM_START + program.len();
-    start..end
+impl Index<usize> for Memory {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &u8 {
+        if index < MEMORY_PROGRAM_START {
+            warn!("Accessed restricted memory at {index:#X}");
+        }
+
+        &self.memory[index]
+    }
+}
+
+impl IndexMut<usize> for Memory {
+    fn index_mut(&mut self, index: usize) -> &mut u8 {
+        if index < MEMORY_PROGRAM_START {
+            warn!("Mutated restricted memory at {index:#X}");
+        }
+
+        &mut self.memory[index]
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use log::Level;
+
     use super::*;
 
+    /// Assert that [`Memory::new`] returns with everything set to zero.  
     #[test]
     fn new() {
         let memory = Memory::new();
-
-        // Ensure every value in the program region is zero
-        for i in MEMORY_PROGRAM_START..MEMORY_SIZE {
+        for i in 0..MEMORY_SIZE {
             assert_eq!(memory.memory[i], 0);
         }
-
-        // Ensure fontset is loaded correctly
-        for (i, chr) in FONTSET.iter().enumerate() {
-            assert_eq!(memory.memory[i], *chr);
-        }
     }
 
+    /// Assert that getting a value by indexing [`Memory`] works correctly.
     #[test]
-    fn load_program() -> Result<()> {
+    fn get() {
         let mut memory = Memory::new();
-        memory.load_program(&[0x00, 0xE0, 0x00, 0xEE])?;
-
-        // Ensure the program was correctly loaded into memory
-        assert_eq!(memory.at(MEMORY_PROGRAM_START), 0x00);
-        assert_eq!(memory.at(MEMORY_PROGRAM_START + 1), 0xE0);
-        assert_eq!(memory.at(MEMORY_PROGRAM_START + 2), 0x00);
-        assert_eq!(memory.at(MEMORY_PROGRAM_START + 3), 0xEE);
-        assert_eq!(memory.program_len, 4);
-
-        Ok(())
+        memory.memory[42] = 24;
+        assert_eq!(memory[42], 24);
     }
 
+    /// Assert that accessing a restricted area by indexing [`Memory`] raises
+    /// a warning.
     #[test]
-    fn program_too_big_error() {
+    fn get_restricted() {
+        testing_logger::setup();
+
+        let memory = Memory::new();
+        let _ = memory[0x42];
+
+        testing_logger::validate(|logs| {
+            assert_eq!(logs.len(), 1);
+            assert_eq!(logs[0].level, Level::Warn);
+            assert_eq!(logs[0].body, "Accessed restricted memory at 0x42");
+        });
+    }
+
+    /// Assert that setting a value by indexing [`Memory`] works correctly.
+    #[test]
+    fn set() {
         let mut memory = Memory::new();
-        // Ensure loading a program that's too big returns an error
-        assert!(memory.load_program(&[0; MEMORY_SIZE + 1]).is_err());
+        memory[42] = 24;
+        assert_eq!(memory.memory[42], 24);
+    }
+
+    /// Assert that mutating a restricted area by indexing [`Memory`] raises
+    /// a warning.
+    #[test]
+    fn set_restricted() {
+        testing_logger::setup();
+
+        let mut memory = Memory::new();
+        memory[0x42] = 0x24;
+
+        testing_logger::validate(|logs| {
+            assert_eq!(logs.len(), 1);
+            assert_eq!(logs[0].level, Level::Warn);
+            assert_eq!(logs[0].body, "Mutated restricted memory at 0x42");
+        });
+    }
+
+    /// Assert that loading a program into memory by [`Memory::load_program`]
+    /// works correctly.
+    #[test]
+    fn load_program() {
+        let mut memory = Memory::new();
+
+        let program = [0x10, 0x42, 0x20, 0x24];
+        memory.load_program(&program).unwrap();
+
+        assert_eq!(
+            &memory.memory[MEMORY_PROGRAM_START..MEMORY_PROGRAM_START + 4],
+            &program
+        );
+    }
+
+    /// Assert that loading a program that's too big to fit into memory by
+    /// [`Memory::load_program`] returns an error.
+    #[test]
+    fn load_big_program_error() {
+        let mut memory = Memory::new();
+        assert!(memory.load_program(&[1; MEMORY_SIZE + 1]).is_err());
     }
 }

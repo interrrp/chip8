@@ -1,12 +1,11 @@
-use std::{thread::sleep, time::Duration};
+use anyhow::{anyhow, Result};
 
 use crate::{
     display::Display,
-    instructions::{decode_instruction, Instruction},
+    instructions::Instruction,
     memory::{Memory, MEMORY_PROGRAM_START},
     registers::Registers,
 };
-use anyhow::{anyhow, Result};
 
 /// Represents a complete CHIP-8 emulator, managing the core system state.
 #[derive(Debug, Clone)]
@@ -51,68 +50,69 @@ impl Emulator {
     ///
     /// An error is returned if `RET` was attempted outside a subroutine.
     fn do_instruction(&mut self, instruction: Instruction) -> Result<()> {
-        let r = &mut self.registers;
+        let v = &mut self.registers.data;
+        let i = &mut self.registers.i;
 
         match instruction {
-            Instruction::Jp { addr } => self.pc = addr - 1,
-            Instruction::JpV0 { addr } => self.pc = addr + r[0] as usize + 1,
+            Instruction::Jp { addr } => self.pc = addr - 2,
+            Instruction::JpV0 { addr } => self.pc = addr + v[0] as usize - 2,
 
             Instruction::Call { addr } => {
                 self.stack.push(self.pc);
-                self.pc = addr - 1;
+                self.pc = addr - 2;
             }
             Instruction::Ret => match self.stack.pop() {
                 Some(addr) => self.pc = addr,
                 None => return Err(anyhow!("Attempted RET outside a subroutine")),
             },
 
-            Instruction::SeVxByte { vx, byte } if r[vx] == byte => self.pc += 2,
-            Instruction::SneVxByte { vx, byte } if r[vx] != byte => self.pc += 2,
-            Instruction::SeVxVy { vx, vy } if r[vx] == r[vy] => self.pc += 2,
-            Instruction::SneVxVy { vx, vy } if r[vx] != r[vy] => self.pc += 2,
+            Instruction::SeVxByte { x, byte } if v[x] == byte => self.pc += 2,
+            Instruction::SneVxByte { x, byte } if v[x] != byte => self.pc += 2,
+            Instruction::SeVxVy { x, y } if v[x] == v[y] => self.pc += 2,
+            Instruction::SneVxVy { x, y } if v[x] != v[y] => self.pc += 2,
 
-            Instruction::LdVxByte { vx, byte } => r[vx] = byte,
-            Instruction::LdVxVy { vx, vy } => r[vx] = r[vy],
-            Instruction::LdIAddr { addr } => r.i = addr,
+            Instruction::LdVxByte { x, byte } => v[x] = byte,
+            Instruction::LdVxVy { x, y } => v[x] = v[y],
+            Instruction::LdIAddr { addr } => *i = addr,
 
-            Instruction::AddVxByte { vx, byte } => {
-                r[vx] = r[vx].wrapping_add(byte);
+            Instruction::AddVxByte { x, byte } => {
+                v[x] = v[x].wrapping_add(byte);
             }
-            Instruction::AddVxVy { vx, vy } => {
-                let (result, carry) = r[vx].overflowing_add(r[vy]);
-                r[vx] = result;
-                r[0xf] = carry.into();
+            Instruction::AddVxVy { x, y } => {
+                let (result, carry) = v[x].overflowing_add(v[y]);
+                v[x] = result;
+                v[0xF] = carry.into();
             }
-            Instruction::AddI { vx } => r.i = r.i.wrapping_add(r[vx] as usize),
-            Instruction::Sub { vx, vy } => {
-                let (new_vx, vf) = r[vx].overflowing_sub(r[vy]);
-                r[vx] = new_vx;
-                r[0xf] = (!vf).into();
+            Instruction::AddI { x } => *i = i.wrapping_add(v[x] as usize),
+            Instruction::Sub { x, y } => {
+                let (new_vx, vf) = v[x].overflowing_sub(v[y]);
+                v[x] = new_vx;
+                v[0xF] = (!vf).into();
             }
-            Instruction::Subn { vx, vy } => {
-                let (new_vx, vf) = r[vy].overflowing_sub(r[vx]);
-                r[vx] = new_vx;
-                r[0xf] = (!vf).into();
+            Instruction::Subn { x, y } => {
+                let (new_vx, vf) = v[y].overflowing_sub(v[x]);
+                v[x] = new_vx;
+                v[0xF] = (!vf).into();
             }
 
-            Instruction::Or { vx, vy } => r[vx] |= r[vy],
-            Instruction::And { vx, vy } => r[vx] &= r[vy],
-            Instruction::Xor { vx, vy } => r[vx] ^= r[vy],
-            Instruction::Shl { vx } => r[vx] <<= 1,
-            Instruction::Shr { vx } => r[vx] >>= 1,
+            Instruction::Or { x, y } => v[x] |= v[y],
+            Instruction::And { x, y } => v[x] &= v[y],
+            Instruction::Xor { x, y } => v[x] ^= v[y],
+            Instruction::Shl { x } => v[x] <<= 1,
+            Instruction::Shr { x } => v[x] >>= 1,
 
             Instruction::Cls => self.display.clear(),
-            Instruction::Drw { vx, vy, nibble } => {
+            Instruction::Drw { x, y, nibble } => {
                 // Reset collision flag
-                self.registers[0xF] = 0;
+                v[0xF] = 0;
 
                 // Get sprite coordinates from registers
-                let x = self.registers[vx] as usize % self.display.width;
-                let y = self.registers[vy] as usize % self.display.height;
+                let x = v[x] as usize % self.display.width;
+                let y = v[y] as usize % self.display.height;
 
                 // Draw each row of the sprite
                 for row in 0..nibble {
-                    let sprite_byte = self.memory.at(self.registers.i + row as usize + 1);
+                    let sprite_byte = self.memory[self.registers.i + row as usize];
 
                     for bit in 0..8 {
                         if (sprite_byte & (0x80 >> bit)) != 0 {
@@ -121,7 +121,7 @@ impl Emulator {
 
                             // XOR pixel and set collision flag if pixel was previously set
                             if self.display.xor_pixel(px, py) {
-                                self.registers[0xF] = 1;
+                                v[0xF] = 1;
                             }
                         }
                     }
@@ -133,10 +133,15 @@ impl Emulator {
 
         self.pc += 2;
 
-        println!("\x1B[2J\x1B[1;1H");
-        self.display.render();
-        println!("pc: {}    {instruction:?}", self.pc);
-        sleep(Duration::from_millis(10));
+        #[cfg(not(test))]
+        {
+            use std::{thread::sleep, time::Duration};
+
+            println!("\x1B[2J\x1B[1;1H");
+            self.display.render();
+            println!("pc: {}    {instruction:?}", self.pc);
+            sleep(Duration::from_millis(10));
+        }
 
         Ok(())
     }
@@ -146,8 +151,8 @@ impl Emulator {
     /// This takes the next two bytes, combines them to get an opcode, then
     /// decodes the instruction.
     fn fetch_instruction(&mut self) -> Result<Instruction> {
-        let opcode = u16::from_be_bytes([self.memory.at(self.pc), self.memory.at(self.pc + 1)]);
-        decode_instruction(opcode)
+        let opcode = u16::from_be_bytes([self.memory[self.pc], self.memory[self.pc + 1]]);
+        Instruction::from_opcode(opcode)
     }
 }
 
@@ -158,10 +163,10 @@ mod tests {
     #[test]
     fn load_program() -> Result<()> {
         let emulator = Emulator::from_program(&[0x00, 0xE0, 0x00, 0xEE])?;
-        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START), 0x00);
-        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 1), 0xE0);
-        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 2), 0x00);
-        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 3), 0xEE);
+        assert_eq!(emulator.memory[MEMORY_PROGRAM_START], 0x00);
+        assert_eq!(emulator.memory[MEMORY_PROGRAM_START + 1], 0xE0);
+        assert_eq!(emulator.memory[MEMORY_PROGRAM_START + 2], 0x00);
+        assert_eq!(emulator.memory[MEMORY_PROGRAM_START + 3], 0xEE);
         Ok(())
     }
 
@@ -188,18 +193,18 @@ mod tests {
         ])?;
         emulator.run()?;
 
-        assert_eq!(emulator.registers[1], 0x42);
-        assert_eq!(emulator.registers[2], 0x24);
+        assert_eq!(emulator.registers.data[1], 0x42);
+        assert_eq!(emulator.registers.data[2], 0x24);
 
         Ok(())
     }
 
     #[test]
     fn ld() -> Result<()> {
-        let mut emulator = Emulator::from_program(&[0x61, 0xab, 0x82, 0x10])?;
+        let mut emulator = Emulator::from_program(&[0x61, 0xAB, 0x82, 0x10])?;
         emulator.run()?;
-        assert_eq!(emulator.registers[1], 0xab);
-        assert_eq!(emulator.registers[2], 0xab);
+        assert_eq!(emulator.registers.data[1], 0xAB);
+        assert_eq!(emulator.registers.data[2], 0xAB);
         Ok(())
     }
 
@@ -219,10 +224,10 @@ mod tests {
         ])?;
         emulator.run()?;
 
-        assert_eq!(emulator.registers[1], 2);
-        assert_eq!(emulator.registers[2], 4);
-        assert_eq!(emulator.registers[3], 6);
-        assert_eq!(emulator.registers[4], 8);
+        assert_eq!(emulator.registers.data[1], 2);
+        assert_eq!(emulator.registers.data[2], 4);
+        assert_eq!(emulator.registers.data[3], 6);
+        assert_eq!(emulator.registers.data[4], 8);
 
         Ok(())
     }
@@ -239,8 +244,8 @@ mod tests {
         ])?;
         emulator.run()?;
 
-        assert_eq!(emulator.registers[1], 4);
-        assert_eq!(emulator.registers[2], 6);
+        assert_eq!(emulator.registers.data[1], 4);
+        assert_eq!(emulator.registers.data[2], 6);
 
         Ok(())
     }
@@ -256,8 +261,8 @@ mod tests {
         ])?;
         emulator.run()?;
 
-        assert_eq!(emulator.registers[1], 0x42);
-        assert_eq!(emulator.registers[2], 0x07);
+        assert_eq!(emulator.registers.data[1], 0x42);
+        assert_eq!(emulator.registers.data[2], 0x07);
 
         Ok(())
     }

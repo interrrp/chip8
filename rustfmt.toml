@@ -1,2 +1,2 @@
 group_imports = "StdExternalCrate"
-wrap_comments = true
+hex_literal_case = "Upper"
