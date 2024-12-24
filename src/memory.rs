@@ -106,7 +106,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn new() -> Result<()> {
+    fn new() {
         let memory = Memory::new();
 
         // Ensure every value in the program region is zero
@@ -115,11 +115,9 @@ mod tests {
         }
 
         // Ensure fontset is loaded correctly
-        for i in 0..FONTSET_SIZE {
-            assert_eq!(memory.memory[i], FONTSET[i]);
+        for (i, chr) in FONTSET.iter().enumerate() {
+            assert_eq!(memory.memory[i], *chr);
         }
-
-        Ok(())
     }
 
     #[test]

@@ -31,13 +31,26 @@ impl Display {
     }
 
     pub fn render(&self) {
+        print!("┌");
+        for _ in 0..DISPLAY_WIDTH + 2 {
+            print!("─");
+        }
+        println!("┐");
+
         for y in 0..self.height {
+            print!("│ ");
             for x in 0..self.width {
                 let pixel = self[(x, y)];
                 print!("{}", if pixel { "█" } else { " " });
             }
-            println!();
+            println!(" │");
         }
+
+        print!("└");
+        for _ in 0..DISPLAY_WIDTH + 2 {
+            print!("─");
+        }
+        println!("┘");
     }
 }
 

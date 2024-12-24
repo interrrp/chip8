@@ -1,3 +1,5 @@
+use std::{thread::sleep, time::Duration};
+
 use crate::{
     display::Display,
     instructions::{decode_instruction, Instruction},
@@ -125,7 +127,10 @@ impl Emulator {
 
         self.pc += 2;
 
+        println!("\x1B[2J\x1B[1;1H");
         self.display.render();
+        println!("pc: {}    {instruction:?}", self.pc);
+        sleep(Duration::from_millis(10));
 
         Ok(())
     }
