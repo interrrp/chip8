@@ -4,11 +4,13 @@ const NUM_REGISTERS: usize = 16;
 
 /// The CPU registers.
 ///
-/// > Chip-8 has 16 general purpose 8-bit registers, usually referred to as Vx, where x is a hexadecimal digit (0
-/// > through F). There is also a 16-bit register called I. This register is generally used to store memory addresses,
-/// > so only the lowest (rightmost) 12 bits are usually used.
+/// > Chip-8 has 16 general purpose 8-bit registers, usually referred to as Vx, where x is a
+/// > hexadecimal digit (0 through F). There is also a 16-bit register called I. This register is
+/// > generally used to store memory addresses, so only the lowest (rightmost) 12 bits are usually
+/// > used.
 /// >
-/// > [_Cowgod's CHIP-8 Technical Reference, section 2.2_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2)
+/// > [_Cowgod's CHIP-8 Technical Reference, section
+/// > 2.2_](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2)
 #[derive(Debug, Clone, Copy)]
 pub struct Registers {
     registers: [u8; NUM_REGISTERS],
@@ -61,13 +63,20 @@ mod tests {
     }
 
     #[test]
-    fn get_set() {
+    fn get() {
         let mut registers = Registers::new();
-
-        // Ensure that the Index and IndexMut implementations work as intended
-        registers[1] = 2;
-        registers[2] = 4;
+        registers.registers[1] = 2;
+        registers.registers[2] = 4;
         assert_eq!(registers[1], 2);
         assert_eq!(registers[2], 4);
+    }
+
+    #[test]
+    fn set() {
+        let mut registers = Registers::new();
+        registers[1] = 2;
+        registers[2] = 4;
+        assert_eq!(registers.registers[1], 2);
+        assert_eq!(registers.registers[2], 4);
     }
 }

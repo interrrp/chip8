@@ -153,10 +153,7 @@ mod tests {
 
     #[test]
     fn with_addr_arg() -> Result<()> {
-        assert_eq!(
-            decode_instruction(0x1abc)?,
-            Instruction::Jp { addr: 0xabc }
-        );
+        assert_eq!(decode_instruction(0x1abc)?, Instruction::Jp { addr: 0xabc });
         assert_eq!(
             decode_instruction(0x2def)?,
             Instruction::Call { addr: 0xdef }

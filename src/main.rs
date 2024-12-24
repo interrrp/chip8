@@ -12,7 +12,6 @@ mod emulator;
 mod instructions;
 mod memory;
 mod registers;
-mod stack;
 
 /// A CHIP-8 emulator.
 #[derive(Parser, Debug, Clone)]

@@ -99,8 +99,8 @@ mod tests {
     fn new() -> Result<()> {
         let memory = Memory::new();
         // Ensure every value in the program region is zero
-        for i in MEMORY_PROGRAM_START..MEMORY_SIZE {
-            assert_eq!(memory.at(i)?, 0);
+        for i in 0..MEMORY_SIZE {
+            assert_eq!(memory.memory[i], 0);
         }
         Ok(())
     }
@@ -112,13 +112,6 @@ mod tests {
         for i in 0..MEMORY_PROGRAM_START {
             assert!(memory.at(i).is_err());
         }
-    }
-
-    #[test]
-    fn program_too_big_error() {
-        let mut memory = Memory::new();
-        // Ensure loading a program that's too big returns an error
-        assert!(memory.load_program(&[0; MEMORY_SIZE + 1]).is_err());
     }
 
     #[test]
@@ -134,5 +127,12 @@ mod tests {
         assert_eq!(memory.program_len, 4);
 
         Ok(())
+    }
+
+    #[test]
+    fn program_too_big_error() {
+        let mut memory = Memory::new();
+        // Ensure loading a program that's too big returns an error
+        assert!(memory.load_program(&[0; MEMORY_SIZE + 1]).is_err());
     }
 }

@@ -3,24 +3,14 @@ use crate::{
     instructions::{decode_instruction, Instruction},
     memory::{Memory, MEMORY_PROGRAM_START},
     registers::Registers,
-    stack::Stack,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 /// Represents a complete CHIP-8 emulator, managing the core system state.
-///
-/// # Components
-///
-/// - [`Registers`]: CPU registers for storing data and state
-/// - [`Stack`]: Call stack for managing subroutine return addresses
-/// - [`Memory`]: System memory for storing ROM and program data
-/// - [`Display`]: Display for drawing program output
-///
-/// This struct handles the processor ("CPU") logic.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Emulator {
     registers: Registers,
-    stack: Stack,
+    stack: Vec<usize>,
     memory: Memory,
     display: Display,
     /// Program counter indicating the current instruction address.
@@ -34,7 +24,7 @@ impl Emulator {
     pub fn from_program(program: &[u8]) -> Result<Emulator> {
         let mut emulator = Emulator {
             registers: Registers::new(),
-            stack: Stack::new(),
+            stack: Vec::new(),
             memory: Memory::new(),
             display: Display::new(),
             pc: MEMORY_PROGRAM_START,
@@ -56,6 +46,11 @@ impl Emulator {
     }
 
     /// Perform an instruction.
+    ///
+    /// An error is returned if:
+    ///
+    /// - `RET` was attempted outside a subroutine
+    /// - Memory access, typically inside a `DRW`, fails
     fn do_instruction(&mut self, instruction: Instruction) -> Result<()> {
         let r = &mut self.registers;
 
@@ -64,15 +59,16 @@ impl Emulator {
             Instruction::JpV0 { addr } => self.pc = addr + r[0] as usize - 2,
 
             Instruction::Call { addr } => {
-                self.stack.push(addr - 5)?;
+                self.stack.push(addr - 5);
                 self.pc = addr - 1;
             }
-            Instruction::Ret => self.pc = self.stack.pop()?,
+            Instruction::Ret => match self.stack.pop() {
+                Some(addr) => self.pc = addr,
+                None => return Err(anyhow!("Attempted RET outside a subroutine")),
+            },
 
             Instruction::SeVxByte { vx, byte } if r[vx] == byte => self.pc += 2,
-            Instruction::SneVxByte { vx, byte } if r[vx] != byte => {
-                self.pc += 2;
-            }
+            Instruction::SneVxByte { vx, byte } if r[vx] != byte => self.pc += 2,
             Instruction::SeVxVy { vx, vy } if r[vx] == r[vy] => self.pc += 2,
             Instruction::SneVxVy { vx, vy } if r[vx] != r[vy] => self.pc += 2,
 
@@ -111,8 +107,7 @@ impl Emulator {
 
                 // Draw each row of the sprite
                 for row in 0..nibble {
-                    let sprite_byte =
-                        self.memory.at(self.registers.i + row as usize)?;
+                    let sprite_byte = self.memory.at(self.registers.i + row as usize)?;
 
                     for bit in 0..8 {
                         if (sprite_byte & (0x80 >> bit)) != 0 {
@@ -146,10 +141,7 @@ impl Emulator {
     /// If the program counter is inside a restricted area (which should never
     /// happen under normal circumstances), this will return an error.
     fn fetch_instruction(&mut self) -> Result<Instruction> {
-        let opcode = u16::from_be_bytes([
-            self.memory.at(self.pc)?,
-            self.memory.at(self.pc + 1)?,
-        ]);
+        let opcode = u16::from_be_bytes([self.memory.at(self.pc)?, self.memory.at(self.pc + 1)?]);
         decode_instruction(opcode)
     }
 }
@@ -262,6 +254,13 @@ mod tests {
         assert_eq!(emulator.registers[1], 0x42);
         assert_eq!(emulator.registers[2], 0x07);
 
+        Ok(())
+    }
+
+    #[test]
+    fn ret_outside_subroutine_error() -> Result<()> {
+        let mut emulator = Emulator::from_program(&[0x00, 0xEE])?;
+        assert!(emulator.run().is_err());
         Ok(())
     }
 }
