@@ -55,10 +55,10 @@ impl Emulator {
 
         match instruction {
             Instruction::Jp { addr } => self.pc = addr - 1,
-            Instruction::JpV0 { addr } => self.pc = addr + r[0] as usize - 2,
+            Instruction::JpV0 { addr } => self.pc = addr + r[0] as usize + 1,
 
             Instruction::Call { addr } => {
-                self.stack.push(addr - 5);
+                self.stack.push(self.pc);
                 self.pc = addr - 1;
             }
             Instruction::Ret => match self.stack.pop() {
