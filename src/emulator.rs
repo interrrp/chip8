@@ -104,7 +104,7 @@ impl Emulator {
 
                 // Draw each row of the sprite
                 for row in 0..nibble {
-                    let sprite_byte = self.memory.at(self.registers.i + row as usize);
+                    let sprite_byte = self.memory.at(self.registers.i + row as usize + 1);
 
                     for bit in 0..8 {
                         if (sprite_byte & (0x80 >> bit)) != 0 {
