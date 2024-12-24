@@ -95,6 +95,12 @@ impl Emulator {
                 r[0xf] = (!vf).into();
             }
 
+            Instruction::Or { vx, vy } => r[vx] |= r[vy],
+            Instruction::And { vx, vy } => r[vx] &= r[vy],
+            Instruction::Xor { vx, vy } => r[vx] ^= r[vy],
+            Instruction::Shl { vx } => r[vx] <<= 1,
+            Instruction::Shr { vx } => r[vx] >>= 1,
+
             Instruction::Cls => self.display.clear(),
             Instruction::Drw { vx, vy, nibble } => {
                 // Reset collision flag
