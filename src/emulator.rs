@@ -47,10 +47,7 @@ impl Emulator {
 
     /// Perform an instruction.
     ///
-    /// An error is returned if:
-    ///
-    /// - `RET` was attempted outside a subroutine
-    /// - Memory access, typically inside a `DRW`, fails
+    /// An error is returned if `RET` was attempted outside a subroutine.
     fn do_instruction(&mut self, instruction: Instruction) -> Result<()> {
         let r = &mut self.registers;
 
@@ -107,7 +104,7 @@ impl Emulator {
 
                 // Draw each row of the sprite
                 for row in 0..nibble {
-                    let sprite_byte = self.memory.at(self.registers.i + row as usize)?;
+                    let sprite_byte = self.memory.at(self.registers.i + row as usize);
 
                     for bit in 0..8 {
                         if (sprite_byte & (0x80 >> bit)) != 0 {
@@ -137,11 +134,8 @@ impl Emulator {
     ///
     /// This takes the next two bytes, combines them to get an opcode, then
     /// decodes the instruction.
-    ///
-    /// If the program counter is inside a restricted area (which should never
-    /// happen under normal circumstances), this will return an error.
     fn fetch_instruction(&mut self) -> Result<Instruction> {
-        let opcode = u16::from_be_bytes([self.memory.at(self.pc)?, self.memory.at(self.pc + 1)?]);
+        let opcode = u16::from_be_bytes([self.memory.at(self.pc), self.memory.at(self.pc + 1)]);
         decode_instruction(opcode)
     }
 }
@@ -153,10 +147,10 @@ mod tests {
     #[test]
     fn load_program() -> Result<()> {
         let emulator = Emulator::from_program(&[0x00, 0xE0, 0x00, 0xEE])?;
-        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START)?, 0x00);
-        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 1)?, 0xE0);
-        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 2)?, 0x00);
-        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 3)?, 0xEE);
+        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START), 0x00);
+        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 1), 0xE0);
+        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 2), 0x00);
+        assert_eq!(emulator.memory.at(MEMORY_PROGRAM_START + 3), 0xEE);
         Ok(())
     }
 
