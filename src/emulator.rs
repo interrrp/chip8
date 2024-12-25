@@ -1,5 +1,8 @@
+use std::{thread::sleep, time::Duration};
+
 use anyhow::{anyhow, Result};
-use raylib::{color::Color, prelude::RaylibDraw, RaylibHandle, RaylibThread};
+use log::info;
+use raylib::{color::Color, ffi::KeyboardKey, prelude::RaylibDraw, RaylibHandle, RaylibThread};
 
 use crate::{
     display::{Display, DISPLAY_SCALE},
@@ -17,6 +20,10 @@ pub struct Emulator {
     display: Display,
     /// Program counter indicating the current instruction address.
     pc: usize,
+    /// Delay timer
+    dt: u8,
+    /// Sound timer
+    st: u8,
 }
 
 impl Emulator {
@@ -30,6 +37,8 @@ impl Emulator {
             memory: Memory::new(),
             display: Display::new(),
             pc: MEMORY_PROGRAM_START,
+            dt: 0,
+            st: 0,
         };
         emulator.memory.load_program(program)?;
         Ok(emulator)
@@ -67,8 +76,6 @@ impl Emulator {
         let v = &mut self.registers.data;
         let i = &mut self.registers.i;
 
-        let mut draw_handle = rl.begin_drawing(rl_thread);
-
         match instruction {
             Instruction::Jp { addr } => self.pc = addr - 2,
             Instruction::JpV0 { addr } => self.pc = addr + v[0] as usize - 2,
@@ -86,10 +93,44 @@ impl Emulator {
             Instruction::SneVxByte { x, byte } if v[x] != byte => self.pc += 2,
             Instruction::SeVxVy { x, y } if v[x] == v[y] => self.pc += 2,
             Instruction::SneVxVy { x, y } if v[x] != v[y] => self.pc += 2,
+            Instruction::Skp { x } if rl.is_key_down(chip8_to_key(v[x])?) => self.pc += 2,
+            Instruction::Sknp { x } if rl.is_key_up(chip8_to_key(v[x])?) => self.pc += 2,
 
             Instruction::LdVxByte { x, byte } => v[x] = byte,
             Instruction::LdVxVy { x, y } => v[x] = v[y],
             Instruction::LdIAddr { addr } => *i = addr,
+            Instruction::LdDt { x } => self.dt = v[x],
+            Instruction::LdSt { x } => self.st = v[x],
+            Instruction::LdK { x } => loop {
+                if let Some(key) = rl.get_key_pressed() {
+                    v[x] = key_to_chip8(key)?;
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(1));
+            },
+            Instruction::LdI { x } => {
+                for n in 0..=x {
+                    self.memory[*i + n] = v[n];
+                }
+                *i += x + 1;
+            }
+            Instruction::LdIVx { x } => {
+                for n in 0..=x {
+                    v[n] = self.memory[*i + n];
+                }
+                *i += x + 1;
+            }
+            Instruction::LdB { x } => {
+                let value = v[x];
+
+                let hundreds = value / 100;
+                let tens = (value / 10) % 10;
+                let ones = value % 10;
+
+                self.memory[*i] = hundreds;
+                self.memory[*i + 1] = tens;
+                self.memory[*i + 2] = ones;
+            }
 
             Instruction::AddVxByte { x, byte } => {
                 v[x] = v[x].wrapping_add(byte);
@@ -150,9 +191,8 @@ impl Emulator {
 
         #[cfg(not(test))]
         {
-            use std::{thread::sleep, time::Duration};
+            let mut draw_handle = rl.begin_drawing(rl_thread);
             self.display.render(&mut draw_handle);
-            sleep(Duration::from_millis(1));
         }
 
         Ok(())
@@ -166,6 +206,50 @@ impl Emulator {
         let opcode = u16::from_be_bytes([self.memory[self.pc], self.memory[self.pc + 1]]);
         Instruction::from_opcode(opcode)
     }
+}
+
+fn key_to_chip8(key: KeyboardKey) -> Result<u8> {
+    Ok(match key {
+        KeyboardKey::KEY_ONE => 0x1,
+        KeyboardKey::KEY_TWO => 0x2,
+        KeyboardKey::KEY_THREE => 0x3,
+        KeyboardKey::KEY_FOUR => 0x4,
+        KeyboardKey::KEY_FIVE => 0x5,
+        KeyboardKey::KEY_SIX => 0x6,
+        KeyboardKey::KEY_SEVEN => 0x7,
+        KeyboardKey::KEY_EIGHT => 0x8,
+        KeyboardKey::KEY_NINE => 0x9,
+        KeyboardKey::KEY_ZERO => 0x0,
+        KeyboardKey::KEY_A => 0xA,
+        KeyboardKey::KEY_B => 0xB,
+        KeyboardKey::KEY_C => 0xC,
+        KeyboardKey::KEY_D => 0xD,
+        KeyboardKey::KEY_E => 0xE,
+        KeyboardKey::KEY_F => 0xF,
+        _ => return Err(anyhow!("Could not map key {key:?} to CHIP-8")),
+    })
+}
+
+fn chip8_to_key(ch: u8) -> Result<KeyboardKey> {
+    Ok(match ch {
+        0x1 => KeyboardKey::KEY_ONE,
+        0x2 => KeyboardKey::KEY_TWO,
+        0x3 => KeyboardKey::KEY_THREE,
+        0x4 => KeyboardKey::KEY_FOUR,
+        0x5 => KeyboardKey::KEY_FIVE,
+        0x6 => KeyboardKey::KEY_SIX,
+        0x7 => KeyboardKey::KEY_SEVEN,
+        0x8 => KeyboardKey::KEY_EIGHT,
+        0x9 => KeyboardKey::KEY_NINE,
+        0x0 => KeyboardKey::KEY_ZERO,
+        0xA => KeyboardKey::KEY_A,
+        0xB => KeyboardKey::KEY_B,
+        0xC => KeyboardKey::KEY_C,
+        0xD => KeyboardKey::KEY_D,
+        0xE => KeyboardKey::KEY_E,
+        0xF => KeyboardKey::KEY_F,
+        _ => return Err(anyhow!("Could not map key {ch:?}")),
+    })
 }
 
 #[cfg(test)]
