@@ -13,6 +13,14 @@ const MEMORY_SIZE: usize = 0xFFF;
 const MEMORY_PROGRAM_SIZE: usize = MEMORY_SIZE - MEMORY_PROGRAM_START;
 
 const FONTSET_SIZE: usize = 80;
+/// Font data.
+///
+///  From _CHIP-8 Technical Reference (Matthew Mikolay)_:
+///
+/// > The memory of the CHIP-8 interpreter will be preloaded with sprite data representing a font of
+/// > sixteen hexadecimal digits. The memory addresses at which this data resides are unspecified,
+/// > but it must be stored within memory reserved for the interpreter, usually at addresses lower
+/// > than `0x200`. Each sprite is four pixels wide by five pixels tall.
 const FONTSET: [u8; FONTSET_SIZE] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -52,7 +60,7 @@ pub struct Memory {
 }
 
 impl Memory {
-    /// Return an instance of system memory with everything set to zero (except the fontset).
+    /// Return an instance of system memory with everything set to zero, except for the fontset.
     pub fn new() -> Memory {
         let mut memory = Memory {
             memory: [0; MEMORY_SIZE],
@@ -112,13 +120,16 @@ mod tests {
 
     use super::*;
 
-    /// Assert that [`Memory::new`] returns with everything set to zero.  
+    /// Assert that [`Memory::new`] returns with everything set to zero, and the fontset.
     #[test]
     fn new() {
         let memory = Memory::new();
-        for i in 0..MEMORY_SIZE {
+
+        for i in FONTSET_SIZE..MEMORY_SIZE {
             assert_eq!(memory.memory[i], 0);
         }
+
+        assert_eq!(memory.memory[0..FONTSET_SIZE], FONTSET);
     }
 
     /// Assert that getting a value by indexing [`Memory`] works correctly.

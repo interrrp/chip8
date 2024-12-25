@@ -49,6 +49,7 @@ impl Emulator {
     /// If there is any error fetching or doing an instruction, execution will
     /// stop and the error will be returned.
     pub fn run(&mut self) -> Result<()> {
+        #[cfg(not(test))]
         let (mut rl, rl_thread) = raylib::init()
             .size(
                 self.display.width as i32 * DISPLAY_SCALE,
@@ -59,7 +60,13 @@ impl Emulator {
 
         while self.pc < MEMORY_PROGRAM_START + self.memory.program_len {
             let instruction = self.fetch_instruction()?;
-            self.do_instruction(instruction, &mut rl, &rl_thread)?;
+            self.do_instruction(
+                instruction,
+                #[cfg(not(test))]
+                &mut rl,
+                #[cfg(not(test))]
+                &rl_thread,
+            )?;
         }
         Ok(())
     }
@@ -70,8 +77,8 @@ impl Emulator {
     fn do_instruction(
         &mut self,
         instruction: Instruction,
-        rl: &mut RaylibHandle,
-        rl_thread: &RaylibThread,
+        #[cfg(not(test))] rl: &mut RaylibHandle,
+        #[cfg(not(test))] rl_thread: &RaylibThread,
     ) -> Result<()> {
         let v = &mut self.registers.data;
         let i = &mut self.registers.i;
@@ -93,7 +100,9 @@ impl Emulator {
             Instruction::SneVxByte { x, byte } if v[x] != byte => self.pc += 2,
             Instruction::SeVxVy { x, y } if v[x] == v[y] => self.pc += 2,
             Instruction::SneVxVy { x, y } if v[x] != v[y] => self.pc += 2,
+            #[cfg(not(test))]
             Instruction::Skp { x } if rl.is_key_down(chip8_to_key(v[x])?) => self.pc += 2,
+            #[cfg(not(test))]
             Instruction::Sknp { x } if rl.is_key_up(chip8_to_key(v[x])?) => self.pc += 2,
 
             Instruction::LdVxByte { x, byte } => v[x] = byte,
@@ -101,6 +110,7 @@ impl Emulator {
             Instruction::LdIAddr { addr } => *i = addr,
             Instruction::LdDt { x } => self.dt = v[x],
             Instruction::LdSt { x } => self.st = v[x],
+            #[cfg(not(test))]
             Instruction::LdK { x } => loop {
                 if let Some(key) = rl.get_key_pressed() {
                     v[x] = key_to_chip8(key)?;

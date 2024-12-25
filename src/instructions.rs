@@ -2,8 +2,8 @@ use anyhow::{anyhow, Result};
 
 /// An enumeration of all CHIP-8 instructions.
 ///
-/// This is based on [Cowgod's CHIP-8 Technical
-/// Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM).
+/// See [CHIP-8 Instruction Set (Matthew
+/// Mikolay)](https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set).
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Instruction {
@@ -147,92 +147,58 @@ impl Instruction {
 mod tests {
     use super::*;
 
-    #[test]
-    fn with_no_args() -> Result<()> {
-        assert_eq!(Instruction::from_opcode(0x00E0)?, Instruction::Cls);
-        assert_eq!(Instruction::from_opcode(0x00EE)?, Instruction::Ret);
-        Ok(())
+    fn is(opcode: u16, instruction: Instruction) -> bool {
+        Instruction::from_opcode(opcode).unwrap() == instruction
     }
 
     #[test]
-    fn with_addr_arg() -> Result<()> {
-        assert_eq!(
-            Instruction::from_opcode(0x1ABC)?,
-            Instruction::Jp { addr: 0xABC }
-        );
-        assert_eq!(
-            Instruction::from_opcode(0x2DEF)?,
-            Instruction::Call { addr: 0xDEF }
-        );
-        Ok(())
-    }
+    fn decode() {
+        assert!(is(0x0000, Instruction::Nop));
+        assert!(is(0x1234, Instruction::Jp { addr: 0x234 }));
+        assert!(is(0xB234, Instruction::JpV0 { addr: 0x234 }));
+        assert!(is(0x2345, Instruction::Call { addr: 0x345 }));
+        assert!(is(0x00EE, Instruction::Ret));
 
-    #[test]
-    fn with_byte_arg() -> Result<()> {
-        assert_eq!(
-            Instruction::from_opcode(0x3ABC)?,
-            Instruction::SeVxByte { x: 0xA, byte: 0xBC }
-        );
-        assert_eq!(
-            Instruction::from_opcode(0x4DEF)?,
-            Instruction::SneVxByte { x: 0xD, byte: 0xEF }
-        );
-        Ok(())
-    }
+        assert!(is(0x3122, Instruction::SeVxByte { x: 1, byte: 0x22 }));
+        assert!(is(0x4122, Instruction::SneVxByte { x: 1, byte: 0x22 }));
+        assert!(is(0x5120, Instruction::SeVxVy { x: 1, y: 2 }));
+        assert!(is(0x9120, Instruction::SneVxVy { x: 1, y: 2 }));
+        assert!(is(0xE19E, Instruction::Skp { x: 1 }));
+        assert!(is(0xE1A1, Instruction::Sknp { x: 1 }));
 
-    #[test]
-    fn with_vx_vy() -> Result<()> {
-        assert_eq!(
-            Instruction::from_opcode(0x8AB0)?,
-            Instruction::LdVxVy { x: 0xA, y: 0xB }
-        );
-        assert_eq!(
-            Instruction::from_opcode(0x8CD1)?,
-            Instruction::Or { x: 0xC, y: 0xD }
-        );
-        Ok(())
-    }
+        assert!(is(0x6122, Instruction::LdVxByte { x: 1, byte: 0x22 }));
+        assert!(is(0x8120, Instruction::LdVxVy { x: 1, y: 2 }));
+        assert!(is(0xA123, Instruction::LdIAddr { addr: 0x123 }));
+        assert!(is(0xF107, Instruction::LdDt { x: 1 }));
+        assert!(is(0xF10A, Instruction::LdK { x: 1 }));
+        assert!(is(0xF115, Instruction::LdDt { x: 1 }));
+        assert!(is(0xF118, Instruction::LdSt { x: 1 }));
+        assert!(is(0xF11E, Instruction::AddI { x: 1 }));
+        assert!(is(0xF129, Instruction::LdF { x: 1 }));
+        assert!(is(0xF133, Instruction::LdB { x: 1 }));
+        assert!(is(0xF155, Instruction::LdI { x: 1 }));
+        assert!(is(0xF165, Instruction::LdIVx { x: 1 }));
+        assert!(is(0xC122, Instruction::Rnd { x: 1, byte: 0x22 }));
 
-    #[test]
-    fn with_f_prefix() -> Result<()> {
-        assert_eq!(
-            Instruction::from_opcode(0xFA07)?,
-            Instruction::LdDt { x: 0xA }
-        );
-        assert_eq!(
-            Instruction::from_opcode(0xFB0A)?,
-            Instruction::LdK { x: 0xB }
-        );
-        assert_eq!(
-            Instruction::from_opcode(0xFC15)?,
-            Instruction::LdDt { x: 0xC }
-        );
-        Ok(())
-    }
+        assert!(is(0x8121, Instruction::Or { x: 1, y: 2 }));
+        assert!(is(0x8122, Instruction::And { x: 1, y: 2 }));
+        assert!(is(0x8123, Instruction::Xor { x: 1, y: 2 }));
+        assert!(is(0x8126, Instruction::Shr { x: 1 }));
+        assert!(is(0x812E, Instruction::Shl { x: 1 }));
 
-    #[test]
-    fn with_e_prefix() -> Result<()> {
-        assert_eq!(
-            Instruction::from_opcode(0xEA9E)?,
-            Instruction::Skp { x: 0xA }
-        );
-        assert_eq!(
-            Instruction::from_opcode(0xEBA1)?,
-            Instruction::Sknp { x: 0xB }
-        );
-        Ok(())
-    }
+        assert!(is(0x7122, Instruction::AddVxByte { x: 1, byte: 0x22 }));
+        assert!(is(0x8124, Instruction::AddVxVy { x: 1, y: 2 }));
+        assert!(is(0x8125, Instruction::Sub { x: 1, y: 2 }));
+        assert!(is(0x8127, Instruction::Subn { x: 1, y: 2 }));
 
-    #[test]
-    fn draw() -> Result<()> {
-        assert_eq!(
-            Instruction::from_opcode(0xD123)?,
+        assert!(is(
+            0xD123,
             Instruction::Drw {
-                x: 0x1,
-                y: 0x2,
-                nibble: 0x3
+                x: 1,
+                y: 2,
+                nibble: 3
             }
-        );
-        Ok(())
+        ));
+        assert!(is(0x00E0, Instruction::Cls));
     }
 }
