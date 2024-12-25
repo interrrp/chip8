@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Result};
+use raylib::{color::Color, prelude::RaylibDraw, RaylibHandle, RaylibThread};
 
 use crate::{
-    display::Display,
+    display::{Display, DISPLAY_SCALE},
     instructions::Instruction,
     memory::{Memory, MEMORY_PROGRAM_START},
     registers::Registers,
@@ -39,9 +40,17 @@ impl Emulator {
     /// If there is any error fetching or doing an instruction, execution will
     /// stop and the error will be returned.
     pub fn run(&mut self) -> Result<()> {
+        let (mut rl, rl_thread) = raylib::init()
+            .size(
+                self.display.width as i32 * DISPLAY_SCALE,
+                self.display.height as i32 * DISPLAY_SCALE,
+            )
+            .title("CHIP-8")
+            .build();
+
         while self.pc < MEMORY_PROGRAM_START + self.memory.program_len {
             let instruction = self.fetch_instruction()?;
-            self.do_instruction(instruction)?;
+            self.do_instruction(instruction, &mut rl, &rl_thread)?;
         }
         Ok(())
     }
@@ -49,9 +58,16 @@ impl Emulator {
     /// Perform an instruction.
     ///
     /// An error is returned if `RET` was attempted outside a subroutine.
-    fn do_instruction(&mut self, instruction: Instruction) -> Result<()> {
+    fn do_instruction(
+        &mut self,
+        instruction: Instruction,
+        rl: &mut RaylibHandle,
+        rl_thread: &RaylibThread,
+    ) -> Result<()> {
         let v = &mut self.registers.data;
         let i = &mut self.registers.i;
+
+        let mut draw_handle = rl.begin_drawing(rl_thread);
 
         match instruction {
             Instruction::Jp { addr } => self.pc = addr - 2,
@@ -119,7 +135,6 @@ impl Emulator {
                             let px = (x + bit) % self.display.width;
                             let py = (y + row as usize) % self.display.height;
 
-                            // XOR pixel and set collision flag if pixel was previously set
                             if self.display.xor_pixel(px, py) {
                                 v[0xF] = 1;
                             }
@@ -136,11 +151,8 @@ impl Emulator {
         #[cfg(not(test))]
         {
             use std::{thread::sleep, time::Duration};
-
-            println!("\x1B[2J\x1B[1;1H");
-            self.display.render();
-            println!("pc: {}    {instruction:?}", self.pc);
-            sleep(Duration::from_millis(10));
+            self.display.render(&mut draw_handle);
+            sleep(Duration::from_millis(1));
         }
 
         Ok(())
