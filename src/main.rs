@@ -23,6 +23,26 @@ fn main() {
 const MEMORY_SIZE: usize = 0xFFF;
 const MEMORY_PROGRAM_START: usize = 0x200;
 
+const FONTSET_SIZE: usize = 80;
+const FONTSET: [u8; FONTSET_SIZE] = [
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+];
+
 const DISPLAY_WIDTH: usize = 64;
 const DISPLAY_HEIGHT: usize = 32;
 const DISPLAY_SCALE: usize = 8;
@@ -41,7 +61,7 @@ struct Emulator {
 
 impl Emulator {
     pub fn new() -> Emulator {
-        Emulator {
+        let mut emu = Emulator {
             memory: [0; MEMORY_SIZE],
             program_len: 0,
             registers: [0; 16],
@@ -51,7 +71,11 @@ impl Emulator {
             pc: MEMORY_PROGRAM_START,
             dt: 0,
             st: 0,
-        }
+        };
+
+        emu.memory[0..FONTSET_SIZE].copy_from_slice(&FONTSET);
+
+        emu
     }
 
     pub fn load_program(&mut self, program: &[u8]) {
@@ -112,18 +136,18 @@ impl Emulator {
                     v[0xF] = carry.into();
                 }
                 0x8 if n == 0x5 => {
-                    let (vx, carry) = v[x].overflowing_sub(v[y]);
-                    v[x] = vx;
-                    v[0xF] = carry.into();
+                    let vf = (v[x] >= v[y]).into();
+                    v[x] = v[x].wrapping_sub(v[y]);
+                    v[0xF] = vf;
                 }
                 0x8 if n == 0x6 => {
                     v[0xF] = v[y] & 1;
                     v[x] = v[y] >> 1;
                 }
                 0x8 if n == 0x7 => {
-                    let (vx, carry) = v[y].overflowing_sub(v[x]);
-                    v[x] = vx;
-                    v[0xF] = carry.into();
+                    let vf = (v[y] >= v[x]).into();
+                    v[x] = v[y].wrapping_sub(v[x]);
+                    v[0xF] = vf;
                 }
                 0x8 if n == 0xE => {
                     v[0xF] = v[y] & 1;
@@ -206,6 +230,7 @@ impl Emulator {
                 }
                 0xF if nn == 0x55 => self.memory[self.i..=self.i + x].copy_from_slice(&v[0..=x]),
                 0xF if nn == 0x65 => v[0..=x].copy_from_slice(&self.memory[self.i..=self.i + x]),
+                0xF if nn == 0x29 => self.i = v[x] as usize,
                 _ => println!("Unknown instruction: {opcode:#X}"),
             }
 
