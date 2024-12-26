@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, time::Duration};
+use std::{fs, path::PathBuf, thread::sleep, time::Duration};
 
 use clap::Parser;
 use raylib::{color::Color, ffi::KeyboardKey, prelude::RaylibDraw};
@@ -91,7 +91,6 @@ impl Emulator {
                 (DISPLAY_WIDTH * DISPLAY_SCALE) as i32,
                 (DISPLAY_HEIGHT * DISPLAY_SCALE) as i32,
             )
-            .vsync()
             .title("CHIP-8")
             .build();
 
@@ -105,6 +104,11 @@ impl Emulator {
             let n = opcode & 0x000F;
             let nn = (opcode & 0x00FF) as u8;
             let nnn = (opcode & 0x0FFF) as usize;
+
+            if self.dt > 0 {
+                self.dt -= 1;
+                continue;
+            }
 
             match (opcode & 0xF000) >> 12 {
                 0x0 if nn == 0x00 => {}
@@ -142,7 +146,7 @@ impl Emulator {
                 }
                 0x8 if n == 0x6 => {
                     v[0xF] = v[y] & 1;
-                    v[x] = v[y] >> 1;
+                    v[y] >>= 1;
                 }
                 0x8 if n == 0x7 => {
                     let vf = (v[y] >= v[x]).into();
@@ -151,7 +155,7 @@ impl Emulator {
                 }
                 0x8 if n == 0xE => {
                     v[0xF] = v[y] & 1;
-                    v[x] = v[y] << 1;
+                    v[y] <<= 1;
                 }
                 0x9 if n == 0x0 && v[x] != v[y] => self.pc += 2,
                 0x9 if n == 0x0 && v[x] == v[y] => {}
@@ -204,15 +208,14 @@ impl Emulator {
                     }
                 }
                 0xE if nn == 0x9E && rl.is_key_down(code_to_key(v[x])) => self.pc += 2,
-                0xE if nn == 0x9E && rl.is_key_up(code_to_key(v[x])) => {}
-                0xE if nn == 0xA1 && rl.is_key_up(code_to_key(v[x])) => self.pc += 2,
+                0xE if nn == 0x9E && !rl.is_key_down(code_to_key(v[x])) => {}
+                0xE if nn == 0xA1 && !rl.is_key_down(code_to_key(v[x])) => self.pc += 2,
                 0xE if nn == 0xA1 && rl.is_key_down(code_to_key(v[x])) => {}
                 0xF if nn == 0x0A => {
                     if let Some(key) = rl.get_key_pressed() {
                         v[x] = key_to_code(key);
                         break;
                     }
-                    std::thread::sleep(Duration::from_millis(1));
                 }
                 0xF if nn == 0x07 => v[x] = self.dt,
                 0xF if nn == 0x15 => self.dt = v[x],
@@ -230,11 +233,13 @@ impl Emulator {
                 }
                 0xF if nn == 0x55 => self.memory[self.i..=self.i + x].copy_from_slice(&v[0..=x]),
                 0xF if nn == 0x65 => v[0..=x].copy_from_slice(&self.memory[self.i..=self.i + x]),
-                0xF if nn == 0x29 => self.i = v[x] as usize,
+                0xF if nn == 0x29 => self.i = v[x] as usize * 5,
                 _ => println!("Unknown instruction: {opcode:#X}"),
             }
 
             self.pc += 2;
+
+            sleep(Duration::from_millis(1));
         }
     }
 
