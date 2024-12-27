@@ -5,9 +5,11 @@ use std::{fs, path::PathBuf, thread::sleep, time::Duration};
 
 use clap::Parser;
 use display::{Display, DISPLAY_HEIGHT, DISPLAY_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH};
-use raylib::{ffi::KeyboardKey, RaylibHandle};
+use keyboard::{is_key_pressed, wait_for_key};
+use raylib::RaylibHandle;
 
 mod display;
+mod keyboard;
 
 /// A tiny CHIP-8 emulator.
 #[derive(Parser, Debug)]
@@ -95,7 +97,7 @@ impl Emulator {
 
         while self.should_run() {
             for _ in 0..11 {
-                self.execute_cycle(&mut rl);
+                self.execute_cycle(&rl);
             }
 
             self.display.draw(&mut rl.begin_drawing(&rl_thread));
@@ -109,7 +111,7 @@ impl Emulator {
     }
 
     #[allow(clippy::too_many_lines)]
-    fn execute_cycle(&mut self, rl: &mut RaylibHandle) {
+    fn execute_cycle(&mut self, rl: &RaylibHandle) {
         let opcode = self.fetch_opcode();
 
         let v = &mut self.registers;
@@ -204,16 +206,11 @@ impl Emulator {
                     }
                 }
             }
-            0xE if nn == 0x9E && rl.is_key_down(code_to_key(v[x])) => self.pc += 2,
-            0xE if nn == 0x9E && !rl.is_key_down(code_to_key(v[x])) => {}
-            0xE if nn == 0xA1 && !rl.is_key_down(code_to_key(v[x])) => self.pc += 2,
-            0xE if nn == 0xA1 && rl.is_key_down(code_to_key(v[x])) => {}
-            0xF if nn == 0x0A => {
-                if let Some(key) = rl.get_key_pressed() {
-                    v[x] = key_to_code(key);
-                    return;
-                }
-            }
+            0xE if nn == 0x9E && is_key_pressed(rl, v[x]) => self.pc += 2,
+            0xE if nn == 0x9E && !is_key_pressed(rl, v[x]) => {}
+            0xE if nn == 0xA1 && !is_key_pressed(rl, v[x]) => self.pc += 2,
+            0xE if nn == 0xA1 && is_key_pressed(rl, v[x]) => {}
+            0xF if nn == 0x0A => v[x] = wait_for_key(rl),
             0xF if nn == 0x07 => v[x] = self.dt,
             0xF if nn == 0x15 => self.dt = v[x],
             0xF if nn == 0x18 => self.st = v[x],
@@ -240,47 +237,5 @@ impl Emulator {
     fn fetch_opcode(&mut self) -> u16 {
         // Combine next two bytes
         u16::from_be_bytes([self.memory[self.pc], self.memory[self.pc + 1]])
-    }
-}
-
-fn code_to_key(code: u8) -> KeyboardKey {
-    match code {
-        0x1 => KeyboardKey::KEY_ONE,
-        0x2 => KeyboardKey::KEY_TWO,
-        0x3 => KeyboardKey::KEY_THREE,
-        0x4 => KeyboardKey::KEY_FOUR,
-        0x5 => KeyboardKey::KEY_FIVE,
-        0x6 => KeyboardKey::KEY_SIX,
-        0x7 => KeyboardKey::KEY_SEVEN,
-        0x8 => KeyboardKey::KEY_EIGHT,
-        0x9 => KeyboardKey::KEY_NINE,
-        0xA => KeyboardKey::KEY_A,
-        0xB => KeyboardKey::KEY_B,
-        0xC => KeyboardKey::KEY_C,
-        0xD => KeyboardKey::KEY_D,
-        0xE => KeyboardKey::KEY_E,
-        0xF => KeyboardKey::KEY_F,
-        _ => KeyboardKey::KEY_ZERO,
-    }
-}
-
-fn key_to_code(key: KeyboardKey) -> u8 {
-    match key {
-        KeyboardKey::KEY_ONE => 0x1,
-        KeyboardKey::KEY_TWO => 0x2,
-        KeyboardKey::KEY_THREE => 0x3,
-        KeyboardKey::KEY_FOUR => 0x4,
-        KeyboardKey::KEY_FIVE => 0x5,
-        KeyboardKey::KEY_SIX => 0x6,
-        KeyboardKey::KEY_SEVEN => 0x7,
-        KeyboardKey::KEY_EIGHT => 0x8,
-        KeyboardKey::KEY_NINE => 0x9,
-        KeyboardKey::KEY_A => 0xA,
-        KeyboardKey::KEY_B => 0xB,
-        KeyboardKey::KEY_C => 0xC,
-        KeyboardKey::KEY_D => 0xD,
-        KeyboardKey::KEY_E => 0xE,
-        KeyboardKey::KEY_F => 0xF,
-        _ => 0x0,
     }
 }
