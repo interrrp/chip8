@@ -1,7 +1,13 @@
+#![deny(clippy::all)]
+#![warn(clippy::pedantic)]
+
 use std::{fs, path::PathBuf, thread::sleep, time::Duration};
 
 use clap::Parser;
-use raylib::{color::Color, ffi::KeyboardKey, prelude::RaylibDraw, RaylibHandle};
+use display::{Display, DISPLAY_HEIGHT, DISPLAY_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH};
+use raylib::{ffi::KeyboardKey, RaylibHandle};
+
+mod display;
 
 /// A tiny CHIP-8 emulator.
 #[derive(Parser, Debug)]
@@ -43,17 +49,13 @@ const FONTSET: [u8; FONTSET_SIZE] = [
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 ];
 
-const DISPLAY_WIDTH: usize = 64;
-const DISPLAY_HEIGHT: usize = 32;
-const DISPLAY_SCALE: usize = 8;
-
 struct Emulator {
     memory: [u8; MEMORY_SIZE],
     program_len: usize,
     registers: [u8; 16],
     i: usize,
     stack: Vec<usize>,
-    display: [bool; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+    display: Display,
     pc: usize,
     dt: u8,
     st: u8,
@@ -67,7 +69,7 @@ impl Emulator {
             registers: [0; 16],
             i: 0,
             stack: Vec::new(),
-            display: [false; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+            display: Display::new(),
             pc: MEMORY_PROGRAM_START,
             dt: 0,
             st: 0,
@@ -87,10 +89,7 @@ impl Emulator {
 
     pub fn run(&mut self) {
         let (mut rl, rl_thread) = raylib::init()
-            .size(
-                (DISPLAY_WIDTH * DISPLAY_SCALE) as i32,
-                (DISPLAY_HEIGHT * DISPLAY_SCALE) as i32,
-            )
+            .size(WINDOW_WIDTH, WINDOW_HEIGHT)
             .title("CHIP-8")
             .build();
 
@@ -99,24 +98,7 @@ impl Emulator {
                 self.execute_cycle(&mut rl);
             }
 
-            let mut d = rl.begin_drawing(&rl_thread);
-            d.clear_background(Color::BLACK);
-
-            for y in 0..DISPLAY_HEIGHT {
-                for x in 0..DISPLAY_WIDTH {
-                    d.draw_rectangle(
-                        (x * DISPLAY_SCALE) as i32,
-                        (y * DISPLAY_SCALE) as i32,
-                        DISPLAY_SCALE as i32,
-                        DISPLAY_SCALE as i32,
-                        if self.display[y * DISPLAY_WIDTH + x] {
-                            Color::WHITE
-                        } else {
-                            Color::BLACK
-                        },
-                    );
-                }
-            }
+            self.display.draw(&mut rl.begin_drawing(&rl_thread));
 
             sleep(Duration::from_millis(16));
         }
@@ -126,6 +108,7 @@ impl Emulator {
         self.pc < MEMORY_PROGRAM_START + self.program_len
     }
 
+    #[allow(clippy::too_many_lines)]
     fn execute_cycle(&mut self, rl: &mut RaylibHandle) {
         let opcode = self.fetch_opcode();
 
@@ -144,7 +127,7 @@ impl Emulator {
 
         match (opcode & 0xF000) >> 12 {
             0x0 if nn == 0x00 => {}
-            0x0 if nn == 0xE0 => self.display = [false; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+            0x0 if nn == 0xE0 => self.display.clear(),
             0x0 if nn == 0xEE => match self.stack.pop() {
                 Some(addr) => self.pc = addr,
                 None => println!("RET outside subroutine"),
@@ -198,6 +181,7 @@ impl Emulator {
             0xC => v[x] = fastrand::u8(0..u8::MAX) & nn,
             0xD => {
                 v[0xF] = 0;
+
                 let x = v[x] as usize;
                 let y = v[y] as usize;
 
@@ -212,12 +196,10 @@ impl Emulator {
                             continue;
                         }
 
-                        if (sprite_byte & (0x80 >> bit)) != 0 {
-                            let idx = (y + row as usize) * DISPLAY_WIDTH + (x + bit);
-                            if self.display[idx] {
-                                v[0xF] = 1;
-                            }
-                            self.display[idx] ^= true;
+                        if (sprite_byte & (0x80 >> bit)) != 0
+                            && self.display.xor_pixel(x + bit, y + row as usize)
+                        {
+                            v[0xF] = 1;
                         }
                     }
                 }
@@ -272,7 +254,6 @@ fn code_to_key(code: u8) -> KeyboardKey {
         0x7 => KeyboardKey::KEY_SEVEN,
         0x8 => KeyboardKey::KEY_EIGHT,
         0x9 => KeyboardKey::KEY_NINE,
-        0x0 => KeyboardKey::KEY_ZERO,
         0xA => KeyboardKey::KEY_A,
         0xB => KeyboardKey::KEY_B,
         0xC => KeyboardKey::KEY_C,
@@ -294,7 +275,6 @@ fn key_to_code(key: KeyboardKey) -> u8 {
         KeyboardKey::KEY_SEVEN => 0x7,
         KeyboardKey::KEY_EIGHT => 0x8,
         KeyboardKey::KEY_NINE => 0x9,
-        KeyboardKey::KEY_ZERO => 0x0,
         KeyboardKey::KEY_A => 0xA,
         KeyboardKey::KEY_B => 0xB,
         KeyboardKey::KEY_C => 0xC,
