@@ -145,8 +145,9 @@ impl Emulator {
                     v[0xF] = vf;
                 }
                 0x8 if n == 0x6 => {
-                    v[0xF] = v[y] & 1;
+                    let vf = v[y] & 1;
                     v[y] >>= 1;
+                    v[0xF] = vf;
                 }
                 0x8 if n == 0x7 => {
                     let vf = (v[y] >= v[x]).into();
@@ -154,8 +155,9 @@ impl Emulator {
                     v[0xF] = vf;
                 }
                 0x8 if n == 0xE => {
-                    v[0xF] = v[y] & 1;
+                    let vf = v[y] >> 7;
                     v[y] <<= 1;
+                    v[0xF] = vf;
                 }
                 0x9 if n == 0x0 && v[x] != v[y] => self.pc += 2,
                 0x9 if n == 0x0 && v[x] == v[y] => {}
