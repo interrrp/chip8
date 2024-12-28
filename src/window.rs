@@ -1,5 +1,3 @@
-use std::{thread::sleep, time::Duration};
-
 use anyhow::Result;
 use minifb::Key;
 
@@ -10,8 +8,7 @@ const SCALE: usize = 8;
 const WINDOW_WIDTH: usize = DISPLAY_WIDTH * SCALE;
 const WINDOW_HEIGHT: usize = DISPLAY_HEIGHT * SCALE;
 
-const FPS: u64 = 60;
-const MSPF: u64 = 1000 / FPS;
+const FPS: usize = 60;
 
 #[derive(Debug)]
 pub struct Window {
@@ -22,7 +19,7 @@ pub struct Window {
 
 impl Window {
     pub fn new() -> Result<Window> {
-        Ok(Window {
+        let mut win = Window {
             win: minifb::Window::new(
                 "CHIP-8",
                 WINDOW_WIDTH,
@@ -31,7 +28,11 @@ impl Window {
             )?,
             buffer: [false; DISPLAY_WIDTH * DISPLAY_HEIGHT],
             framebuffer: [0; WINDOW_WIDTH * WINDOW_HEIGHT],
-        })
+        };
+
+        win.win.set_target_fps(FPS);
+
+        Ok(win)
     }
 
     pub fn clear(&mut self) {
@@ -67,8 +68,6 @@ impl Window {
 
         self.win
             .update_with_buffer(&self.framebuffer, WINDOW_WIDTH, WINDOW_HEIGHT)?;
-
-        sleep(Duration::from_millis(MSPF));
 
         Ok(())
     }
