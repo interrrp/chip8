@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Parser;
+use log::LevelFilter;
 
 use crate::emulator::Emulator;
 
@@ -24,12 +25,28 @@ struct Args {
 }
 
 fn main() -> Result<()> {
+    set_up_logger()?;
+
     let args = Args::parse();
 
     let mut emulator = Emulator::new()?;
     emulator.load_program_file(&args.program_path)?;
     emulator.instructions_per_frame = args.instructions_per_frame;
     emulator.run()?;
+
+    Ok(())
+}
+
+fn set_up_logger() -> Result<()> {
+    let filter_level = if cfg!(debug_assertions) {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Info
+    };
+
+    pretty_env_logger::formatted_builder()
+        .filter_level(filter_level)
+        .init();
 
     Ok(())
 }

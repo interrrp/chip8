@@ -1,6 +1,7 @@
 use std::{fs, path::Path};
 
 use anyhow::{anyhow, Context, Result};
+use log::info;
 
 use crate::{
     memory::{Memory, MEMORY_PROGRAM_START},
@@ -46,12 +47,19 @@ impl Emulator {
     }
 
     pub fn run(&mut self) -> Result<()> {
+        info!(
+            "Starting emulator at {} instructions per frame",
+            self.instructions_per_frame
+        );
+
         while !self.window.should_close() {
             for _ in 0..self.instructions_per_frame {
                 self.do_cycle()?;
             }
             self.window.update()?;
         }
+
+        info!("Stopping emulator. Goodbye!");
 
         Ok(())
     }
