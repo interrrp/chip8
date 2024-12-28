@@ -1,7 +1,7 @@
 use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
-use minifb::{Key, KeyRepeat};
+use minifb::Key;
 
 pub const DISPLAY_WIDTH: usize = 64;
 pub const DISPLAY_HEIGHT: usize = 32;
@@ -43,10 +43,7 @@ impl Window {
     }
 
     pub fn get_pressed_key(&self) -> Option<u8> {
-        self.win
-            .get_keys_pressed(KeyRepeat::No)
-            .first()
-            .map(key_to_code)
+        self.win.get_keys_released().first().map(key_to_code)
     }
 
     pub fn xor_pixel(&mut self, x: usize, y: usize) -> bool {
