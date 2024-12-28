@@ -8,9 +8,6 @@ use crate::{
     window::{Window, DISPLAY_HEIGHT, DISPLAY_WIDTH},
 };
 
-// As recommended by Gulrak, the CHIP-8 god
-const CYCLES_PER_FRAME: usize = 11;
-
 type Stack = Vec<usize>;
 
 #[derive(Debug)]
@@ -18,6 +15,7 @@ pub struct Emulator {
     memory: Memory,
     registers: Registers,
     call_stack: Stack,
+    pub instructions_per_frame: usize,
     window: Window,
     program_counter: usize,
     delay_timer: u8,
@@ -30,6 +28,7 @@ impl Emulator {
             memory: Memory::new(),
             registers: Registers::new(),
             call_stack: Stack::new(),
+            instructions_per_frame: 11,
             window: Window::new()?,
             program_counter: MEMORY_PROGRAM_START,
             delay_timer: 0,
@@ -48,7 +47,7 @@ impl Emulator {
 
     pub fn run(&mut self) -> Result<()> {
         while !self.window.should_close() {
-            for _ in 0..CYCLES_PER_FRAME {
+            for _ in 0..self.instructions_per_frame {
                 self.do_cycle()?;
             }
             self.window.update()?;

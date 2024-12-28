@@ -17,6 +17,10 @@ struct Args {
     ///
     /// This typically ends in `.ch8` or `.rom`.
     program_path: PathBuf,
+
+    /// Number of instructions per frame.
+    #[arg(long, default_value_t = 11)]
+    instructions_per_frame: usize,
 }
 
 fn main() -> Result<()> {
@@ -24,6 +28,7 @@ fn main() -> Result<()> {
 
     let mut emulator = Emulator::new()?;
     emulator.load_program_file(&args.program_path)?;
+    emulator.instructions_per_frame = args.instructions_per_frame;
     emulator.run()?;
 
     Ok(())
