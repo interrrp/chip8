@@ -258,6 +258,8 @@ impl Emulator {
         let vy = self.registers[y] as usize;
         let i = self.registers.i;
 
+        self.registers[0xF] = 0;
+
         for row in 0..n as usize {
             let y_pos = (vy + row) % DISPLAY_HEIGHT;
             let sprite_byte = self.memory[i + row];
